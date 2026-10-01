@@ -21,4 +21,5 @@ Open the printed URL (it must be http(s), not `file://`).
 - `js/sync.js`: keeps the player in line with the shared `State` (echo guard, drift, seek detection)
 - `js/youtube.js`: IFrame Player API loader and URL parsing
 - `js/chat.js`: chat message shape, validation and dedup key
+- `js/emoji.js`: `:shortcode:` lookup and suggestions for the chat (gemoji)
 - `js/main.js`: UI, mesh sync (last `sentAt` wins), names, chat, `sessionStorage` persistence

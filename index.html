@@ -6,7 +6,7 @@
     <title>jukebox</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📻</text></svg>" />
     <link rel="stylesheet" href="style.css" />
-    <!-- Trystero from the CDN, every file pinned by hash: if the CDN serves anything else, the browser refuses to run it.
+    <!-- Trystero and gemoji from the CDN, every file pinned by hash: if the CDN serves anything else, the browser refuses to run it.
          Static npm files only (jsDelivr's +esm bundles are regenerated, so their hashes drift). -->
     <script type="importmap">
       {
@@ -14,7 +14,8 @@
           "trystero": "https://cdn.jsdelivr.net/npm/trystero@0.25.4/dist/index.mjs",
           "@trystero-p2p/nostr": "https://cdn.jsdelivr.net/npm/@trystero-p2p/nostr@0.25.4/dist/index.mjs",
           "@trystero-p2p/core": "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/index.mjs",
-          "@noble/secp256k1": "https://cdn.jsdelivr.net/npm/@noble/secp256k1@3.1.0/index.js"
+          "@noble/secp256k1": "https://cdn.jsdelivr.net/npm/@noble/secp256k1@3.1.0/index.js",
+          "gemoji": "https://cdn.jsdelivr.net/npm/gemoji@8.1.0/index.js"
         },
         "integrity": {
           "https://cdn.jsdelivr.net/npm/trystero@0.25.4/dist/index.mjs": "sha384-rhcy1zkjAR4Mn18NnoSMxI5XL8TN/feUxqUhdMLHZE9mDFduv6TZOigGcCahnE7j",
@@ -33,7 +34,8 @@
           "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/signal-handler.mjs": "sha384-zXTjzzk5UGR1Bb9wbxjZqUhE+vwmi1av+2gimzrIw0QGCDmHrFPPNO1vTTPu8Fy5",
           "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/strategy.mjs": "sha384-zsU/a7QH2d0JQ+fcu0BYSGX0x16MefrDeUfl5NNknQMaPmYLItksGwD/iU8hWott",
           "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/topic-strategy.mjs": "sha384-jeMoX+brY/xr3nXcl8zz8dBYMmiqfUnJDy0wSZbwOVZAIHuPT3p9fGJLxaiZ5A0e",
-          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/utils.mjs": "sha384-FIg8YNJTDfRw2Eor6iJaMXMsWhrHf5tUrglhkvjpEs1GNSjbkn/82GppxZsFqi9a"
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/utils.mjs": "sha384-FIg8YNJTDfRw2Eor6iJaMXMsWhrHf5tUrglhkvjpEs1GNSjbkn/82GppxZsFqi9a",
+          "https://cdn.jsdelivr.net/npm/gemoji@8.1.0/index.js": "sha384-OWedZCjokw1F2g/lg736euku1xCBNG/llcqjfszwI8h49aAKC9uX1nJBejK6RUSS"
         }
       }
     </script>
@@ -89,7 +91,8 @@
           <p class="hint" id="chat-empty">What should we play next? 🎧</p>
           <ul id="chat-log" class="chat-log"></ul>
           <form id="chat-form" class="chat-form">
-            <input id="chat-input" type="text" placeholder="Say something…" maxlength="300" autocomplete="off" />
+            <ul id="emoji-suggestions" class="emoji-suggestions" role="listbox" hidden></ul>
+            <input id="chat-input" type="text" placeholder="Say something…" maxlength="300" autocomplete="off" role="combobox" aria-controls="emoji-suggestions" aria-expanded="false" />
             <button class="btn">Send</button>
           </form>
         </aside>

@@ -1,4 +1,5 @@
 import { HISTORY_SIZE, MAX_CHAT_LENGTH, chatKey, createChat, isChat, senderColor } from './chat.js'
+import { completedShortcodeAt, replaceShortcodes, shortcodeAt, suggest } from './emoji.js'
 import { createPassphrase, parsePassphrase } from './passphrase.js'
 import { joinJukebox, randomId } from './room.js'
 import { Sync, isNewer, isState } from './sync.js'
@@ -187,13 +188,79 @@ function renderChat() {
 $('chat-form').addEventListener('submit', (e) => {
   e.preventDefault()
   const input = $('chat-input')
-  const text = input.value.trim().slice(0, MAX_CHAT_LENGTH)
+  const text = replaceShortcodes(input.value.trim()).slice(0, MAX_CHAT_LENGTH)
   if (!text) return
   input.value = ''
+  closeEmoji()
   const msg = createChat(text, { name: session.name, from: session.peerId })
   receiveChat(msg)
   actions?.chat.send(msg)
 })
+
+// ---------- emoji ----------
+
+let emojiOpen = null // { start, suggestions, selected } while the `:` list is showing
+
+function closeEmoji() {
+  emojiOpen = null
+  $('emoji-suggestions').hidden = true
+  $('chat-input').setAttribute('aria-expanded', 'false')
+}
+
+function renderEmoji() {
+  const list = $('emoji-suggestions')
+  list.replaceChildren(
+    ...emojiOpen.suggestions.map(({ name, emoji }, i) => {
+      const li = document.createElement('li')
+      li.role = 'option'
+      li.ariaSelected = String(i === emojiOpen.selected)
+      li.append(Object.assign(document.createElement('span'), { textContent: emoji }), `:${name}:`)
+      // mousedown, not click: keeps the focus (and the caret) in the input
+      li.addEventListener('mousedown', (e) => {
+        e.preventDefault()
+        pickEmoji(i)
+      })
+      return li
+    }),
+  )
+  list.hidden = false
+  $('chat-input').setAttribute('aria-expanded', 'true')
+  list.children[emojiOpen.selected]?.scrollIntoView({ block: 'nearest' })
+}
+
+function pickEmoji(i) {
+  const input = $('chat-input')
+  input.setRangeText(emojiOpen.suggestions[i].emoji + ' ', emojiOpen.start, input.selectionStart, 'end')
+  closeEmoji()
+}
+
+$('chat-input').addEventListener('input', (e) => {
+  const input = e.target
+  const done = completedShortcodeAt(input.value, input.selectionStart)
+  if (done) input.setRangeText(done.emoji, done.start, done.end, 'end')
+  const typing = shortcodeAt(input.value, input.selectionStart)
+  const suggestions = typing ? suggest(typing.query) : []
+  if (!suggestions.length) return closeEmoji()
+  emojiOpen = { start: typing.start, suggestions, selected: 0 }
+  renderEmoji()
+})
+
+$('chat-input').addEventListener('keydown', (e) => {
+  if (!emojiOpen || e.isComposing) return
+  const count = emojiOpen.suggestions.length
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault()
+    emojiOpen.selected = (emojiOpen.selected + (e.key === 'ArrowDown' ? 1 : -1) + count) % count
+    renderEmoji()
+  } else if (e.key === 'Enter' || e.key === 'Tab') {
+    e.preventDefault() // pick the emoji, don't send the message
+    pickEmoji(emojiOpen.selected)
+  } else if (e.key === 'Escape') {
+    closeEmoji()
+  }
+})
+
+$('chat-input').addEventListener('blur', closeEmoji)
 
 $('video-form').addEventListener('submit', (e) => {
   e.preventDefault()

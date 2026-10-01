@@ -408,8 +408,48 @@ input:focus {
 }
 
 .chat-form {
+  position: relative;
   display: flex;
   gap: 8px;
+}
+
+/* The `:` emoji list floats above the chat input, like Slack's. */
+.emoji-suggestions {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: #2b1f19;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.emoji-suggestions li {
+  padding: 4px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.emoji-suggestions li span {
+  margin-right: 8px;
+  font-size: 1.25em;
+  vertical-align: middle;
+}
+
+.emoji-suggestions li[aria-selected='true'] {
+  background: rgba(244, 162, 89, 0.18);
+  color: var(--text);
 }
 
 /* ---------- vinyl ---------- */

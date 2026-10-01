@@ -74,6 +74,7 @@ type State = {
 - Invite card: room link plus copy button. People list with count.
 - Room: YouTube player, URL input to change video, connection status.
 - Room chat: short text messages to agree on the next video. Late joiners get the last 50 messages from everyone, deduplicated.
+- Chat emoji, Slack style: typing `:` lists matching shortcodes (arrows + Enter or Tab to pick, Escape to close), and a fully typed `:joy:` turns into 😂. Shortcodes come from GitHub's [gemoji](https://github.com/wooorm/gemoji), loaded from the CDN and pinned by hash.
 - A "Join / click to start" button to satisfy the browser autoplay policy.
 - Cosy vibe: warm dark theme, jukebox feel.
 
