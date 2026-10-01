@@ -15,6 +15,7 @@ Open the printed URL (it must be http(s), not `file://`).
 3. Refreshing rejoins the room and picks up where the video was.
 4. ↑ in an empty chat input edits your last message.
 5. The 💬 button in the chat switches to chat mode (chat in the middle, video in the corner); 📺 switches back.
+6. **⏸ Pause for me** stops the music for you only; **Rejoin the room** jumps back to where the others are. They see a ⏸ next to your name meanwhile.
 
 ## Code
 

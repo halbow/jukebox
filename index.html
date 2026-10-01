@@ -68,8 +68,16 @@
               <span class="btn primary big">▶ Click to start</span>
               <small>Your browser needs one click before it can play sound.</small>
             </button>
+            <button id="rejoin-overlay" class="overlay" hidden>
+              <strong>⏸ Paused for you only</strong>
+              <span class="btn primary big">▶ Rejoin the room</span>
+              <small>The others are still listening.</small>
+            </button>
           </div>
-          <p class="now-playing" id="now-playing" hidden></p>
+          <div class="now-playing-row" id="now-playing-row" hidden>
+            <p class="now-playing" id="now-playing"></p>
+            <button id="pause-locally" class="btn small" title="Stop the music here only, the others keep listening">⏸ Pause for me</button>
+          </div>
           <form id="video-form" class="video-form">
             <input id="video-url" type="text" placeholder="Paste a YouTube link…" autocomplete="off" />
             <button class="btn primary">Play</button>

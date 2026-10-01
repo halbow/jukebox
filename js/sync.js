@@ -40,6 +40,8 @@ export function expectedPosition(state, now = Date.now()) {
 export class Sync {
   /** Last agreed room state. */
   state = null
+  /** "Pause for me": the player stops and ignores the room, which keeps updating `state`. Not broadcast. */
+  pausedLocally = false
 
   #player = null
   #started = false
@@ -72,6 +74,17 @@ export class Sync {
     this.#player?.stopVideo()
   }
 
+  pauseLocally() {
+    this.pausedLocally = true
+    this.#player?.pauseVideo()
+  }
+
+  /** Back to the room: wherever it is now, the video it's on, at the live position. */
+  resumeLocally() {
+    this.pausedLocally = false
+    this.#apply()
+  }
+
   receive(state) {
     this.state = state
     this.#apply()
@@ -102,7 +115,7 @@ export class Sync {
   }
 
   #active() {
-    return this.#player && this.#started
+    return this.#player && this.#started && !this.pausedLocally
   }
 
   #guarded() {

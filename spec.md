@@ -77,6 +77,7 @@ type State = {
 - Chat emoji, Slack style: typing `:` lists matching shortcodes (arrows + Enter or Tab to pick, Escape to close), and a fully typed `:joy:` turns into 😂, `:D` turns into 😃, and `:p` into 😛. Shortcodes come from GitHub's [gemoji](https://github.com/wooorm/gemoji), loaded from the CDN and pinned by hash.
 - Edit your last message: ↑ in an empty chat input loads it back (Escape cancels). The edit is resent with the same `from` and `sentAt` plus an `editedAt`; the newest edit wins, shows as "(edited)", and is what late joiners get.
 - Chat mode toggle: the chat takes the room and the video shrinks to a corner, without reloading the player. Remembered locally.
+- Pause for me: stops your player without broadcasting. While paused, room `State`s are still received but not applied; "Rejoin the room" (an overlay over the player, so YouTube's own controls can't broadcast a play) applies the latest one at its live position. Picking a video also rejoins. Peers see a ⏸ on your name (a `pausedLocally` flag in `hello`, resent on change). Not kept across a refresh.
 - A "Join / click to start" button to satisfy the browser autoplay policy.
 - Cosy vibe: warm dark theme, jukebox feel.
 

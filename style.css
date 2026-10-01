@@ -245,6 +245,12 @@ body:has(#view-room:not([hidden])) .topbar {
   font-size: 1.1rem;
 }
 
+.btn.small {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+}
+
 input {
   width: 100%;
   padding: 10px 14px;
@@ -350,8 +356,17 @@ input:focus {
   cursor: pointer;
 }
 
-.now-playing {
+.now-playing-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin: 18px 4px 0;
+}
+
+.now-playing {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -390,6 +405,17 @@ input:focus {
   border: 1px solid var(--line);
   border-radius: 999px;
   font-size: 0.9rem;
+}
+
+.people li.paused {
+  color: var(--muted);
+}
+
+/* "Not listening right now": a small ⏸ after the name, text style so it stays muted. */
+.people li.paused::after {
+  content: '⏸\FE0E';
+  margin-left: 6px;
+  font-size: 0.75rem;
 }
 
 .icon-btn {

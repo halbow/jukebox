@@ -21,7 +21,7 @@ let creating = false // just clicked "Create a room", so the name prompt says so
 // What survives a refresh, per tab and per room: { peerId, name, joinedAt, state, chat }
 let session = null
 
-const people = new Map() // Trystero peer id → { name, joinedAt }
+const people = new Map() // Trystero peer id → { name, joinedAt, pausedLocally }
 
 const sync = new Sync({
   peerId: '', // set once the session is known
@@ -76,7 +76,7 @@ function renderNowPlaying() {
   const title = player?.getVideoData?.()?.title
   $('empty-screen').hidden = Boolean(sync.state)
   $('now-playing').textContent = title ? title : ''
-  $('now-playing').hidden = !title
+  $('now-playing-row').hidden = !title
   document.querySelectorAll('.vinyl').forEach((el) => el.classList.toggle('spinning', playing))
 }
 
@@ -107,6 +107,7 @@ function endRoom(message) {
 }
 
 function playVideo(videoId, options) {
+  if (sync.pausedLocally) setPausedLocally(false) // picking a video means you're back
   sync.load(videoId, options)
   renderNowPlaying()
 }
@@ -316,6 +317,19 @@ $('video-form').addEventListener('submit', (e) => {
   playVideo(videoId)
 })
 
+function setPausedLocally(paused) {
+  if (paused) sync.pauseLocally()
+  else sync.resumeLocally()
+  $('rejoin-overlay').hidden = !paused
+  $('pause-locally').disabled = paused
+  actions?.hello.send(hello()) // so the others see the ⏸ next to your name
+  renderPeople()
+  renderNowPlaying()
+}
+
+$('pause-locally').addEventListener('click', () => setPausedLocally(true))
+$('rejoin-overlay').addEventListener('click', () => setPausedLocally(false))
+
 $('start-overlay').addEventListener('click', () => {
   $('start-overlay').hidden = true
   sync.start()
@@ -372,7 +386,7 @@ async function connect() {
 
   room.onPeerJoin = (id) => {
     const target = { target: id }
-    actions.hello.send({ name: session.name, joinedAt: session.joinedAt }, target)
+    actions.hello.send(hello(), target)
     if (sync.state) actions.state.send(sync.state, target)
     for (const msg of chatLog) actions.chat.send(msg, target)
   }
@@ -383,7 +397,7 @@ async function connect() {
 
   actions.hello.onMessage = (data, { peerId: id }) => {
     if (!Number.isFinite(data?.joinedAt)) return
-    people.set(id, { name: cleanName(data.name) || 'Friend', joinedAt: data.joinedAt })
+    people.set(id, { name: cleanName(data.name) || 'Friend', joinedAt: data.joinedAt, pausedLocally: data.pausedLocally === true })
     renderPeople()
     if (isOverCap()) endRoom(`The room is full: ${MAX_PEOPLE} people are already listening.`)
   }
@@ -401,6 +415,10 @@ async function connect() {
   actions.chat.onMessage = (msg) => isChat(msg) && receiveChat(msg)
 }
 
+function hello() {
+  return { name: session.name, joinedAt: session.joinedAt, pausedLocally: sync.pausedLocally }
+}
+
 /** Whoever arrived after the first MAX_PEOPLE leaves. Older members stay, even after a refresh. */
 function isOverCap() {
   const before = [...people.values()].filter((p) => p.joinedAt < session.joinedAt).length
@@ -410,7 +428,14 @@ function isOverCap() {
 function renderPeople() {
   const others = [...people.values()].sort((a, b) => a.joinedAt - b.joinedAt)
   $('people').replaceChildren(
-    ...[{ name: 'You' }, ...others].map(({ name }) => Object.assign(document.createElement('li'), { textContent: name })),
+    ...[{ name: 'You', pausedLocally: sync.pausedLocally }, ...others].map(({ name, pausedLocally }) => {
+      const li = Object.assign(document.createElement('li'), { textContent: name })
+      if (pausedLocally) {
+        li.classList.add('paused')
+        li.title = 'Paused for themselves, not listening right now'
+      }
+      return li
+    }),
   )
   const count = others.length + 1
   $('people-count').textContent = `${count}/${MAX_PEOPLE}`
