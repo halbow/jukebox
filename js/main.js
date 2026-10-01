@@ -9,7 +9,7 @@ const MAX_NAME_LENGTH = 24
 const NAME_KEY = 'jukebox:name'
 
 const $ = (id) => document.getElementById(id)
-const views = { home: $('view-home'), join: $('view-join'), room: $('view-room'), ended: $('view-ended') }
+const views = { home: $('view-home'), room: $('view-room'), ended: $('view-ended') }
 
 let player = null
 let room = null
@@ -242,17 +242,17 @@ async function openRoom(phrase) {
   renderChat()
 
   if (session.state) sync.receive(session.state) // resumes where it was, `expectedPosition` covers the gap
+  $('invite-link').value = `${location.origin}${location.pathname}#room=${phrase}`
+  $('invite-passphrase').textContent = phrase
+  enterRoom() // behind the name prompt, so the player loads while you type
+  renderPeople()
+
   if (!session.name) session.name = await askName()
   // The click on "Join" counts as the autoplay gesture. Back from a refresh there's none,
   // so the overlay shows if autoplay gets refused.
   sync.start()
   save()
-
-  $('invite-link').value = `${location.origin}${location.pathname}#room=${phrase}`
-  $('invite-passphrase').textContent = phrase
-  enterRoom()
   autoPaste()
-  renderPeople()
   connect()
 }
 
@@ -318,7 +318,7 @@ function renderPeople() {
 
 /** Resolves with the name the user submits, remembered for next time. */
 function askName() {
-  show('join')
+  $('name-modal').hidden = false
   $('join-title').textContent = creating ? 'Your room is ready 🎶' : "You're invited 🎶"
   const input = $('guest-name')
   input.value = localStorage.getItem(NAME_KEY) ?? ''
@@ -329,6 +329,7 @@ function askName() {
       const name = cleanName(input.value)
       if (!name) return
       $('name-form').removeEventListener('submit', onSubmit)
+      $('name-modal').hidden = true
       localStorage.setItem(NAME_KEY, name)
       resolve(name)
     })

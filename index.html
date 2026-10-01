@@ -30,19 +30,6 @@
         </div>
       </section>
 
-      <section id="view-join" class="view center" hidden>
-        <div class="card">
-          <h2 id="join-title">You're invited 🎶</h2>
-          <form id="name-form" class="name-form">
-            <p>What should the others call you?</p>
-            <div class="name-row">
-              <input id="guest-name" type="text" placeholder="Your name" maxlength="24" autocomplete="nickname" required />
-              <button class="btn primary">Join</button>
-            </div>
-          </form>
-        </div>
-      </section>
-
       <section id="view-room" class="view room" hidden>
         <div class="stage">
           <div class="screen">
@@ -99,5 +86,18 @@
         </div>
       </section>
     </main>
+
+    <div id="name-modal" class="modal" hidden>
+      <div class="card">
+        <h2 id="join-title">You're invited 🎶</h2>
+        <form id="name-form" class="name-form">
+          <p>What should the others call you?</p>
+          <div class="name-row">
+            <input id="guest-name" type="text" placeholder="Your name" maxlength="24" autocomplete="nickname" required />
+            <button class="btn primary">Join</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </body>
 </html>

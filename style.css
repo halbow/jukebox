@@ -111,8 +111,21 @@ main {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
 
-.view.center .card {
+.view.center .card,
+.modal .card {
   width: min(480px, 100%);
+}
+
+/* Over the room, so you see where you're going while picking a name. */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(22, 16, 13, 0.6);
+  backdrop-filter: blur(3px);
 }
 
 .hero {

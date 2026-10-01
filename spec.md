@@ -71,7 +71,7 @@ type State = {
 
 - Home: "Create room" button.
 - Home: "Create room", and a field to join by pasting a passphrase.
-- Name prompt before entering a room (remembered locally). Peers announce names to each other on connect.
+- Name prompt as a modal over the room, so you see it while typing (remembered locally). Peers announce names to each other on connect.
 - Invite card: room link plus copy button, and the passphrase. People list with count.
 - Room: YouTube player, URL input to change video, connection status.
 - Room chat: short text messages to agree on the next video. Late joiners get the last 50 messages from everyone, deduplicated.
