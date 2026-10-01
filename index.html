@@ -6,6 +6,37 @@
     <title>jukebox</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📻</text></svg>" />
     <link rel="stylesheet" href="style.css" />
+    <!-- Trystero from the CDN, every file pinned by hash: if the CDN serves anything else, the browser refuses to run it.
+         Static npm files only (jsDelivr's +esm bundles are regenerated, so their hashes drift). -->
+    <script type="importmap">
+      {
+        "imports": {
+          "trystero": "https://cdn.jsdelivr.net/npm/trystero@0.25.4/dist/index.mjs",
+          "@trystero-p2p/nostr": "https://cdn.jsdelivr.net/npm/@trystero-p2p/nostr@0.25.4/dist/index.mjs",
+          "@trystero-p2p/core": "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/index.mjs",
+          "@noble/secp256k1": "https://cdn.jsdelivr.net/npm/@noble/secp256k1@3.1.0/index.js"
+        },
+        "integrity": {
+          "https://cdn.jsdelivr.net/npm/trystero@0.25.4/dist/index.mjs": "sha384-rhcy1zkjAR4Mn18NnoSMxI5XL8TN/feUxqUhdMLHZE9mDFduv6TZOigGcCahnE7j",
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/nostr@0.25.4/dist/index.mjs": "sha384-IIFHZ0SOpHOlKK06YIObCTPBB3RaM0mwojo0ox+yiLWEPCW0G7v1fKb6d/S6T0Yo",
+          "https://cdn.jsdelivr.net/npm/@noble/secp256k1@3.1.0/index.js": "sha384-xQMYFllbNmavsQwZlWhSUqpC/VdlaBbd06APBdi86X76G2MR3WmRV22KLRiefOcj",
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/index.mjs": "sha384-9Ds037XRrGECrYlIWVTN74jcTI7Cc5nt1H0fO3Eo6tklcbIcxqopJcJ4xd7y0S7A",
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/action-wire.mjs": "sha384-IOO2oz/fmxYyK99mf+BRfHoWdz08eNETTVdCyl9JbXmmIxkp+VIb/IGS8APTaMmX",
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/actions.mjs": "sha384-P6QehMI/3RNdVtWc1U7z0B9iQ2rxxVMNXLG+isl40JkrS6UXkDl/hyCMGW6k2ykM",
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/crypto.mjs": "sha384-EXjm8xqqlXQgCs2Fazb/uOBBQSvLlEWqEHci1cQJjv3Yu7wfW1IfKLE/2QlQ42JK",
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/handshake.mjs": "sha384-W820VlR3e5Dy9WMihY5m8toPRiHrFZXaviueeOkg+U7LQEXtE+mcS6D91oGH28DZ",
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/media.mjs": "sha384-JjXXeehHPiWXZ8jOaR14whwmKQ7uX8ExNVDEobjpMrCsW23EkImloC7yLNeSozo4",
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/offer-pool.mjs": "sha384-CxH6y2c6ZQqcCIPJ+QawvnBIrOYtXcjlOBYE7UOVmqERpto1gmt6G6VIudKFjAcD",
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/peer.mjs": "sha384-SbpnO8wdojSdg9GVl57+yrKl6OZKf1NKwp0l6LeBIkjeIPH9ItLVnUS63XWCQPmH",
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/room.mjs": "sha384-6LQ6j7XSR9QVawsTah9BLvNDwFFe+YeBkiQLQA95MdnNKW6g2e/r91Wq1MDnTQNP",
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/shared-peer.mjs": "sha384-b4L9asFCmOfxvRyoxaOF00G1yrV6ElFxq7Jfgv8r0Y11sClaP2O/34SQrWX/PCcE",
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/signal-handler.mjs": "sha384-zXTjzzk5UGR1Bb9wbxjZqUhE+vwmi1av+2gimzrIw0QGCDmHrFPPNO1vTTPu8Fy5",
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/strategy.mjs": "sha384-zsU/a7QH2d0JQ+fcu0BYSGX0x16MefrDeUfl5NNknQMaPmYLItksGwD/iU8hWott",
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/topic-strategy.mjs": "sha384-jeMoX+brY/xr3nXcl8zz8dBYMmiqfUnJDy0wSZbwOVZAIHuPT3p9fGJLxaiZ5A0e",
+          "https://cdn.jsdelivr.net/npm/@trystero-p2p/core@0.25.4/dist/utils.mjs": "sha384-FIg8YNJTDfRw2Eor6iJaMXMsWhrHf5tUrglhkvjpEs1GNSjbkn/82GppxZsFqi9a"
+        }
+      }
+    </script>
     <script type="module" src="js/main.js"></script>
   </head>
   <body>
@@ -50,18 +81,11 @@
 
         <aside class="side">
           <div class="card">
-            <h3>Invite friends</h3>
-            <p class="step">Send them this link, it works for everyone.</p>
-            <div class="copy-row">
-              <input id="invite-link" readonly />
-              <button id="copy-invite" class="btn">Copy</button>
-            </div>
-            <p class="step">Or tell them the passphrase:</p>
-            <code id="invite-passphrase" class="passphrase"></code>
-          </div>
-
-          <div class="card">
-            <h3>In the room <span class="count" id="people-count"></span></h3>
+            <h3>
+              In the room
+              <button id="copy-invite" class="icon-btn" title="Copy room link" aria-label="Copy room link">🔗</button>
+              <span class="count" id="people-count"></span>
+            </h3>
             <ul id="people" class="people"></ul>
           </div>
 

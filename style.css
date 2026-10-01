@@ -138,6 +138,32 @@ main {
   gap: 20px;
 }
 
+/* On desktop the side is exactly as tall as the 16:9 screen next to it (column width minus side and gap),
+   and the chat takes whatever height is left. */
+@media (min-width: 901px) {
+  .view.room {
+    container-type: inline-size;
+  }
+
+  .side {
+    align-self: start;
+    height: calc((100cqw - 344px) * 9 / 16);
+  }
+
+  .side .chat {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .side .chat-log {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+  }
+}
+
 /* ---------- controls ---------- */
 
 .btn {
@@ -201,17 +227,6 @@ input:focus {
   border-color: var(--amber);
 }
 
-.copy-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 18px;
-}
-
-.copy-row input {
-  font: 12px ui-monospace, 'SF Mono', Menlo, monospace;
-  color: var(--muted);
-}
-
 .name-row {
   display: flex;
   gap: 8px;
@@ -219,22 +234,6 @@ input:focus {
 
 .join-row {
   margin-top: 22px;
-}
-
-code.passphrase {
-  display: block;
-  color: var(--amber);
-  font: 0.95rem ui-monospace, 'SF Mono', Menlo, monospace;
-  user-select: all;
-  overflow-wrap: anywhere;
-}
-
-.step {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  color: var(--muted);
-  margin-bottom: 10px;
 }
 
 .hint {
@@ -356,6 +355,21 @@ code.passphrase {
 
 .people li:last-child {
   border-bottom: 0;
+}
+
+.icon-btn {
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ok);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .count {

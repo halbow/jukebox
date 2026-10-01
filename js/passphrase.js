@@ -1,4 +1,4 @@
-// Room passphrases: random words from the EFF short wordlist (1296 words, ~10.3 bits each).
+// Room passphrases: random words from the EFF short wordlist (1296 words minus "yo-yo", which has a dash; ~10.3 bits each).
 // Wordlist by the Electronic Frontier Foundation, CC BY 3.0: https://www.eff.org/dice
 
 const WORDS = (
@@ -68,11 +68,11 @@ const WORDS = (
   'voice void volt voter vowel wad wafer wager wages wagon wake walk wand wasp watch water wavy wheat whiff ' +
   'whole whoop wick widen widow width wife wifi wilt wimp wind wing wink wipe wired wiry wise wish wispy wok ' +
   'wolf womb wool woozy word work worry wound woven wrath wreck wrist xerox yahoo yam yard year yeast yelp yield ' +
-  'yo-yo yodel yoga yoyo yummy zebra zero zesty zippy zone zoom'
+  'yodel yoga yoyo yummy zebra zero zesty zippy zone zoom'
 ).split(' ')
 
 const WORD_COUNT = 8 // ~83 bits: nobody types it, it's copy/pasted
-const MAX_LENGTH = 100
+const WORD_SET = new Set(WORDS)
 
 /** Uniform pick (rejection sampling, so no modulo bias). */
 function randomWord() {
@@ -85,8 +85,13 @@ export function createPassphrase() {
   return Array.from({ length: WORD_COUNT }, randomWord).join('-')
 }
 
-/** Lowercase, words joined by dashes, so "Plum Otter river" and "plum-otter-river" are the same room. */
-export function cleanPassphrase(text) {
+/**
+ * The passphrase in `text`, or '' if it isn't one we generated. Made-up phrases are refused:
+ * the passphrase is the room's only secret, and a short one can be guessed from what the relays see.
+ * Case, spaces and dashes don't matter, so "Plum Otter river" and "plum-otter-river" are the same.
+ */
+export function parsePassphrase(text) {
   if (typeof text !== 'string') return ''
-  return text.toLowerCase().trim().split(/[\s\-_]+/).filter(Boolean).join('-').slice(0, MAX_LENGTH)
+  const words = text.toLowerCase().trim().split(/[\s\-_]+/).filter(Boolean)
+  return words.length === WORD_COUNT && words.every((w) => WORD_SET.has(w)) ? words.join('-') : ''
 }

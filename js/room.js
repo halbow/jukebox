@@ -8,8 +8,11 @@ export function randomId() {
   return Math.random().toString(36).slice(2, 10)
 }
 
-/** Every peer connects to every other peer (mesh). Trystero loads on demand, so the home page doesn't wait for the CDN. */
+/**
+ * Every peer connects to every other peer (mesh). Trystero loads on demand, so the home page doesn't wait for the CDN.
+ * The import map in index.html pins it to CDN files checked by hash.
+ */
 export async function joinJukebox(passphrase, { onJoinError }) {
-  const { joinRoom } = await import('https://esm.run/trystero@0.25.4')
+  const { joinRoom } = await import('trystero')
   return joinRoom({ appId: APP_ID, password: passphrase }, passphrase, { onJoinError })
 }

@@ -1,5 +1,5 @@
 import { HISTORY_SIZE, MAX_CHAT_LENGTH, chatKey, createChat, isChat } from './chat.js'
-import { cleanPassphrase, createPassphrase } from './passphrase.js'
+import { createPassphrase, parsePassphrase } from './passphrase.js'
 import { joinJukebox, randomId } from './room.js'
 import { Sync, isNewer, isState } from './sync.js'
 import { PLAYER_STATE, createPlayer, parseVideoId } from './youtube.js'
@@ -60,7 +60,7 @@ async function copy(text, button) {
     area.remove()
   }
   const label = button.textContent
-  button.textContent = 'Copied ✓'
+  button.textContent = '✓'
   setTimeout(() => (button.textContent = label), 1500)
 }
 
@@ -228,8 +228,9 @@ $('create-room').addEventListener('click', () => {
 
 $('passphrase-form').addEventListener('submit', (e) => {
   e.preventDefault()
-  const phrase = cleanPassphrase($('passphrase-input').value)
+  const phrase = parsePassphrase($('passphrase-input').value)
   if (phrase) goToRoom(phrase)
+  else showError('home-error', "That's not a jukebox passphrase. Paste the 8 words exactly as you got them.")
 })
 
 // ---------- room ----------
@@ -242,8 +243,6 @@ async function openRoom(phrase) {
   renderChat()
 
   if (session.state) sync.receive(session.state) // resumes where it was, `expectedPosition` covers the gap
-  $('invite-link').value = `${location.origin}${location.pathname}#room=${phrase}`
-  $('invite-passphrase').textContent = phrase
   enterRoom() // behind the name prompt, so the player loads while you type
   renderPeople()
 
@@ -336,7 +335,7 @@ function askName() {
   })
 }
 
-$('copy-invite').addEventListener('click', (e) => copy($('invite-link').value, e.currentTarget))
+$('copy-invite').addEventListener('click', (e) => copy(`${location.origin}${location.pathname}#room=${passphrase}`, e.currentTarget))
 
 // ---------- boot ----------
 
@@ -345,8 +344,12 @@ addEventListener('pagehide', () => {
   room?.leave()
 })
 
+function hashRoom() {
+  return new URLSearchParams(location.hash.slice(1)).get('room')
+}
+
 function hashPassphrase() {
-  return cleanPassphrase(new URLSearchParams(location.hash.slice(1)).get('room'))
+  return parsePassphrase(hashRoom())
 }
 
 addEventListener('hashchange', () => {
@@ -364,4 +367,5 @@ if (location.protocol === 'file:') {
   openRoom(hashPassphrase())
 } else {
   show('home')
+  if (hashRoom()) showError('home-error', "This invite link is broken or too old. Ask for a new one.")
 }
