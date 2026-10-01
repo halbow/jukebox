@@ -98,6 +98,26 @@ function endRoom(message) {
   show('ended')
 }
 
+function playVideo(videoId, options) {
+  sync.load(videoId, options)
+  renderNowPlaying()
+}
+
+/** If nothing is playing yet and the clipboard holds a YouTube link, cue it up paused. */
+async function autoPaste() {
+  if (sync.state || views.room.hidden || !navigator.clipboard?.readText) return
+  let text
+  try {
+    text = await navigator.clipboard.readText()
+  } catch {
+    return // permission denied or no focus: the URL input still works
+  }
+  const videoId = parseVideoId(text)
+  // A bare 11-char word would parse as an id, so only trust actual links.
+  if (!videoId || videoId === text.trim() || sync.state) return
+  playVideo(videoId, { playing: false })
+}
+
 $('video-form').addEventListener('submit', (e) => {
   e.preventDefault()
   const input = $('video-url')
@@ -109,14 +129,16 @@ $('video-form').addEventListener('submit', (e) => {
     return
   }
   input.value = ''
-  sync.load(videoId)
-  renderNowPlaying()
+  playVideo(videoId)
 })
 
 $('start-overlay').addEventListener('click', () => {
   $('start-overlay').hidden = true
   sync.start()
+  autoPaste() // by now a guest has the host's state, if there is one
 })
+
+addEventListener('focus', autoPaste) // e.g. back from copying a link in another tab
 
 // ---------- host ----------
 
@@ -139,6 +161,7 @@ async function startHosting() {
   $('invite-panel').hidden = false
   $('people-panel').hidden = false
   enterRoom()
+  autoPaste()
   renderPeople()
   await refreshInvite()
 }

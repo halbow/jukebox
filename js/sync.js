@@ -72,9 +72,9 @@ export class Sync {
     this.#apply()
   }
 
-  /** Local "change video" from the URL bar. */
-  load(videoId) {
-    this.state = { videoId, playing: true, position: 0, sentAt: Date.now(), from: this.peerId }
+  /** Local "change video" from the URL bar, or cued paused (`playing: false`) for an auto-paste. */
+  load(videoId, { playing = true } = {}) {
+    this.state = { videoId, playing, position: 0, sentAt: Date.now(), from: this.peerId }
     this.onBroadcast(this.state)
     this.#apply()
   }
