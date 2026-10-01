@@ -82,6 +82,16 @@ main {
   padding: 0 28px 40px;
 }
 
+/* In a room the top bar lines up with the room's edges, so it shares the room's width (plus main's padding). */
+body {
+  --room-width: 1560px;
+}
+
+body:has(#view-room:not([hidden])) .topbar {
+  max-width: calc(var(--room-width) + 56px);
+  margin: 0 auto;
+}
+
 .view.center {
   display: grid;
   place-items: center;
@@ -93,7 +103,7 @@ main {
   grid-template-columns: minmax(0, 1fr) 360px;
   grid-template-areas: 'stage chat';
   gap: 24px;
-  max-width: 1560px;
+  max-width: var(--room-width);
   margin: 0 auto;
 }
 
@@ -178,8 +188,8 @@ main {
 
   /* The 16:9 screen grows with its column, so cap the room's width to what the window's height can show:
      the screen plus the 232px of top bar, now playing, link form and padding, next to the 384px chat column. */
-  .view.room:not(.chat-mode) {
-    max-width: max(720px, calc((100vh - 232px) * 16 / 9 + 384px));
+  body:has(.view.room:not(.chat-mode)) {
+    --room-width: max(720px, calc((100vh - 232px) * 16 / 9 + 384px));
   }
 
   /* The corner video is too short to set the row height, so the chat fills the window instead. */
