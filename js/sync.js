@@ -28,6 +28,11 @@ export function isState(msg) {
   )
 }
 
+/** No host to arbitrate: every peer keeps the last `sentAt`, ties broken by peer id, so all converge. */
+export function isNewer(a, b) {
+  return a.sentAt > b.sentAt || (a.sentAt === b.sentAt && a.from > b.from)
+}
+
 export function expectedPosition(state, now = Date.now()) {
   return state.playing ? state.position + (now - state.sentAt) / 1000 : state.position
 }

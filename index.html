@@ -19,8 +19,12 @@
         <div class="card hero">
           <span class="vinyl big"></span>
           <h1>Listen together.</h1>
-          <p>Watch and listen to YouTube in sync with up to 4 friends. No accounts, no server. Just you, your friends, and a shared tune.</p>
+          <p>Watch and listen to YouTube in sync with your friends. No accounts, no server of ours. Just you, your friends, and a shared tune.</p>
           <button id="create-room" class="btn primary big">Create a room</button>
+          <form id="passphrase-form" class="name-row join-row">
+            <input id="passphrase-input" type="text" placeholder="Got a passphrase? Paste it here" autocomplete="off" required />
+            <button class="btn">Join</button>
+          </form>
           <p class="hint">Got an invite link? Just open it.</p>
           <p class="error" id="home-error" hidden></p>
         </div>
@@ -28,12 +32,14 @@
 
       <section id="view-join" class="view center" hidden>
         <div class="card">
-          <h2>You're invited 🎶</h2>
-          <p>Send this code back to whoever invited you. Once they paste it, you'll drop right into the room.</p>
-          <textarea id="answer-code" rows="5" readonly placeholder="Preparing your code…"></textarea>
-          <button id="copy-answer" class="btn primary" disabled>Copy code</button>
-          <p class="status-line"><span class="dot"></span><span id="join-status">Preparing your code…</span></p>
-          <p class="error" id="join-error" hidden></p>
+          <h2 id="join-title">You're invited 🎶</h2>
+          <form id="name-form" class="name-form">
+            <p>What should the others call you?</p>
+            <div class="name-row">
+              <input id="guest-name" type="text" placeholder="Your name" maxlength="24" autocomplete="nickname" required />
+              <button class="btn primary">Join</button>
+            </div>
+          </form>
         </div>
       </section>
 
@@ -56,25 +62,18 @@
         </div>
 
         <aside class="side">
-          <div class="card" id="invite-panel" hidden>
-            <h3>Invite a friend</h3>
-            <div id="invite-steps">
-              <p class="step"><span class="num">1</span>Send them this link. Each link works for one friend.</p>
-              <div class="copy-row">
-                <input id="invite-link" readonly />
-                <button id="copy-invite" class="btn" disabled>Copy</button>
-              </div>
-              <p class="step"><span class="num">2</span>Paste the code they send back.</p>
-              <form id="answer-form">
-                <textarea id="answer-input" rows="3" placeholder="Their answer code…"></textarea>
-                <button id="let-in" class="btn primary" disabled>Let them in</button>
-              </form>
+          <div class="card">
+            <h3>Invite friends</h3>
+            <p class="step">Send them this link, it works for everyone.</p>
+            <div class="copy-row">
+              <input id="invite-link" readonly />
+              <button id="copy-invite" class="btn">Copy</button>
             </div>
-            <p id="invite-full" class="hint" hidden>The room is full. Five's a party 🎉</p>
-            <p class="error" id="invite-error" hidden></p>
+            <p class="step">Or tell them the passphrase:</p>
+            <code id="invite-passphrase" class="passphrase"></code>
           </div>
 
-          <div class="card" id="people-panel" hidden>
+          <div class="card">
             <h3>In the room <span class="count" id="people-count"></span></h3>
             <ul id="people" class="people"></ul>
           </div>

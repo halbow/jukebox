@@ -1,6 +1,6 @@
 # jukebox 📻
 
-Watch and listen to YouTube together, in sync. Static files only, peer-to-peer over WebRTC, up to 5 people (host + 4 friends). See [spec.md](spec.md).
+Watch and listen to YouTube together, in sync. Static files only, peer-to-peer over WebRTC, up to 12 people. Peers find each other through public Nostr relays ([Trystero](https://github.com/dmotz/trystero)); only the handshake goes through them, encrypted with the room passphrase. See [spec.md](spec.md).
 
 ## Run
 
@@ -10,14 +10,15 @@ npx serve .        # or: python3 -m http.server
 
 Open the printed URL (it must be http(s), not `file://`).
 
-1. **Create a room**, copy the invite link and send it to a friend.
-2. Your friend opens it and sends back their answer code.
-3. Paste it into **Let them in**. A fresh link appears for the next friend.
+1. **Create a room** and send the link to your friends.
+2. They open it, or paste the passphrase on the home page, pick a name, and they're in.
+3. Refreshing rejoins the room and picks up where the video was.
 
 ## Code
 
-- `js/signal.js`: WebRTC offer/answer with copy/paste codes (deflate + base64url, non-trickle ICE)
+- `js/room.js`: joins a Trystero (Nostr) room, with the passphrase as room id and password
+- `js/passphrase.js`: random passphrases from the EFF short wordlist
 - `js/sync.js`: keeps the player in line with the shared `State` (echo guard, drift, seek detection)
 - `js/youtube.js`: IFrame Player API loader and URL parsing
-- `js/chat.js`: chat message shape and validation (the host stamps names and relays)
-- `js/main.js`: UI, host star relay / arbitration, guest flow, chat
+- `js/chat.js`: chat message shape, validation and dedup key
+- `js/main.js`: UI, mesh sync (last `sentAt` wins), names, chat, `sessionStorage` persistence

@@ -1,22 +1,33 @@
-import { HISTORY_SIZE, MAX_CHAT_LENGTH, createChat, isChat } from './chat.js'
-import { answerInvite, createInvite, decode, randomId } from './signal.js'
-import { Sync, isState } from './sync.js'
+import { HISTORY_SIZE, MAX_CHAT_LENGTH, chatKey, createChat, isChat } from './chat.js'
+import { cleanPassphrase, createPassphrase } from './passphrase.js'
+import { joinJukebox, randomId } from './room.js'
+import { Sync, isNewer, isState } from './sync.js'
 import { PLAYER_STATE, createPlayer, parseVideoId } from './youtube.js'
 
-const MAX_PEOPLE = 5 // host included
-const CONNECT_TIMEOUT_MS = 30000
+const MAX_PEOPLE = 12 // you included. Soft cap: in a mesh every extra person costs everyone a connection.
+const MAX_NAME_LENGTH = 24
+const NAME_KEY = 'jukebox:name'
 
 const $ = (id) => document.getElementById(id)
 const views = { home: $('view-home'), join: $('view-join'), room: $('view-room'), ended: $('view-ended') }
 
-const peerId = randomId()
-let role = null // 'host' | 'guest'
 let player = null
+let room = null
+let actions = null // { hello, state, chat } Trystero actions
+let passphrase = null
+let creating = false // just clicked "Create a room", so the name prompt says so
+// What survives a refresh, per tab and per room: { peerId, name, joinedAt, state, chat }
+let session = null
+
+const people = new Map() // Trystero peer id → { name, joinedAt }
 
 const sync = new Sync({
-  peerId,
-  onBroadcast: (state) => (role === 'host' ? sendToGuests(state) : send(hostChannel, state)),
-  onNeedsGesture: () => role === 'guest' && ($('start-overlay').hidden = false),
+  peerId: '', // set once the session is known
+  onBroadcast: (state) => {
+    actions?.state.send(state)
+    save()
+  },
+  onNeedsGesture: () => ($('start-overlay').hidden = false),
 })
 
 // ---------- shared UI ----------
@@ -53,16 +64,9 @@ async function copy(text, button) {
   setTimeout(() => (button.textContent = label), 1500)
 }
 
-function send(channel, state) {
-  if (channel?.readyState === 'open') channel.send(JSON.stringify(state))
-}
-
-function parseMessage(data) {
-  try {
-    return JSON.parse(data)
-  } catch {
-    return null
-  }
+/** Trim, collapse whitespace and cap a display name. Empty means "no name". */
+function cleanName(name) {
+  return typeof name === 'string' ? name.replace(/\s+/g, ' ').trim().slice(0, MAX_NAME_LENGTH) : ''
 }
 
 function renderNowPlaying() {
@@ -92,6 +96,8 @@ function enterRoom() {
 }
 
 function endRoom(message) {
+  room?.leave()
+  room = actions = null
   sync.stop()
   setStatus('')
   $('ended-message').textContent = message
@@ -118,20 +124,62 @@ async function autoPaste() {
   playVideo(videoId, { playing: false })
 }
 
+// ---------- session (survives a refresh) ----------
+
+const sessionKey = (phrase) => `jukebox:room:${phrase}`
+
+function loadSession(phrase) {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(sessionKey(phrase)))
+    if (typeof saved?.peerId === 'string' && Number.isFinite(saved.joinedAt)) {
+      return {
+        peerId: saved.peerId,
+        name: cleanName(saved.name),
+        joinedAt: saved.joinedAt,
+        state: isState(saved.state) ? saved.state : null,
+        chat: Array.isArray(saved.chat) ? saved.chat.filter(isChat) : [],
+      }
+    }
+  } catch {
+    // corrupted or missing: start fresh
+  }
+  return { peerId: randomId(), name: '', joinedAt: Date.now(), state: null, chat: [] }
+}
+
+function save() {
+  if (!session) return
+  session.state = sync.state
+  session.chat = chatLog
+  sessionStorage.setItem(sessionKey(passphrase), JSON.stringify(session))
+}
+
 // ---------- chat ----------
 
-const chatLog = [] // the host replays it to guests who join late
+let chatLog = [] // sorted by sentAt; replayed to everyone who joins after us
 
 function receiveChat(msg) {
+  const key = chatKey(msg)
+  if (chatLog.some((m) => chatKey(m) === key)) return // history replays overlap
   chatLog.push(msg)
-  if (chatLog.length > HISTORY_SIZE) chatLog.shift()
-  const li = document.createElement('li')
-  li.classList.toggle('mine', msg.from === peerId)
-  li.append(Object.assign(document.createElement('b'), { textContent: msg.from === peerId ? 'You' : msg.name }), msg.text)
+  chatLog.sort((a, b) => a.sentAt - b.sentAt)
+  if (chatLog.length > HISTORY_SIZE) chatLog = chatLog.slice(-HISTORY_SIZE)
+  renderChat()
+  save()
+}
+
+function renderChat() {
   const list = $('chat-log')
-  list.append(li)
+  list.replaceChildren(
+    ...chatLog.map((msg) => {
+      const mine = msg.from === session.peerId
+      const li = document.createElement('li')
+      li.classList.toggle('mine', mine)
+      li.append(Object.assign(document.createElement('b'), { textContent: mine ? 'You' : msg.name }), msg.text)
+      return li
+    }),
+  )
   list.scrollTop = list.scrollHeight
-  $('chat-empty').hidden = true
+  $('chat-empty').hidden = chatLog.length > 0
 }
 
 $('chat-form').addEventListener('submit', (e) => {
@@ -140,10 +188,9 @@ $('chat-form').addEventListener('submit', (e) => {
   const text = input.value.trim().slice(0, MAX_CHAT_LENGTH)
   if (!text) return
   input.value = ''
-  const msg = createChat(text, { name: 'Host', from: peerId }) // the host renames guest messages
+  const msg = createChat(text, { name: session.name, from: session.peerId })
   receiveChat(msg)
-  if (role === 'host') sendToGuests(msg)
-  else send(hostChannel, msg)
+  actions?.chat.send(msg)
 })
 
 $('video-form').addEventListener('submit', (e) => {
@@ -163,216 +210,157 @@ $('video-form').addEventListener('submit', (e) => {
 $('start-overlay').addEventListener('click', () => {
   $('start-overlay').hidden = true
   sync.start()
-  autoPaste() // by now a guest has the host's state, if there is one
+  autoPaste() // by now we have the room's state, if there is one
 })
 
 addEventListener('focus', autoPaste) // e.g. back from copying a link in another tab
 
-// ---------- host ----------
+// ---------- home ----------
 
-const guests = new Map() // invite id → { name, pc, channel, connected }
-let currentInvite = null
-let preparingInvite = false
-let guestCounter = 0
-
-function sendToGuests(state) {
-  for (const guest of guests.values()) send(guest.channel, state)
+function goToRoom(phrase) {
+  location.hash = `room=${phrase}` // the hashchange handler takes it from here
 }
 
-function isFull() {
-  return guests.size + 1 >= MAX_PEOPLE
-}
+$('create-room').addEventListener('click', () => {
+  creating = true
+  goToRoom(createPassphrase())
+})
 
-async function startHosting() {
-  role = 'host'
-  sync.start() // the click on "Create room" counts as the autoplay gesture
-  $('invite-panel').hidden = false
-  $('people-panel').hidden = false
+$('passphrase-form').addEventListener('submit', (e) => {
+  e.preventDefault()
+  const phrase = cleanPassphrase($('passphrase-input').value)
+  if (phrase) goToRoom(phrase)
+})
+
+// ---------- room ----------
+
+async function openRoom(phrase) {
+  passphrase = phrase
+  session = loadSession(phrase)
+  sync.peerId = session.peerId
+  chatLog = session.chat
+  renderChat()
+
+  if (session.state) sync.receive(session.state) // resumes where it was, `expectedPosition` covers the gap
+  if (!session.name) session.name = await askName()
+  // The click on "Join" counts as the autoplay gesture. Back from a refresh there's none,
+  // so the overlay shows if autoplay gets refused.
+  sync.start()
+  save()
+
+  $('invite-link').value = `${location.origin}${location.pathname}#room=${phrase}`
+  $('invite-passphrase').textContent = phrase
   enterRoom()
   autoPaste()
   renderPeople()
-  await refreshInvite()
+  connect()
 }
 
-async function refreshInvite() {
-  if (preparingInvite || currentInvite || isFull()) return renderInvite()
-  preparingInvite = true
-  renderInvite()
+async function connect() {
   try {
-    currentInvite = await createInvite()
+    room = await joinJukebox(passphrase, {
+      onJoinError: ({ error }) => {
+        console.warn('jukebox: join error', error)
+        showError('room-error', "Couldn't connect to someone in the room. One of you may be on a strict network (mobile data, office Wi-Fi).")
+      },
+    })
   } catch (err) {
-    showError('invite-error', `Couldn't create an invite: ${err.message}`)
-  } finally {
-    preparingInvite = false
+    return showError('room-error', `Couldn't reach the relays (${err.message}). Check your connection and reload.`)
   }
-  renderInvite()
+  actions = { hello: room.makeAction('hello'), state: room.makeAction('state'), chat: room.makeAction('chat') }
+
+  room.onPeerJoin = (id) => {
+    const target = { target: id }
+    actions.hello.send({ name: session.name, joinedAt: session.joinedAt }, target)
+    if (sync.state) actions.state.send(sync.state, target)
+    for (const msg of chatLog) actions.chat.send(msg, target)
+  }
+  room.onPeerLeave = (id) => {
+    people.delete(id)
+    renderPeople()
+  }
+
+  actions.hello.onMessage = (data, { peerId: id }) => {
+    if (!Number.isFinite(data?.joinedAt)) return
+    people.set(id, { name: cleanName(data.name) || 'Friend', joinedAt: data.joinedAt })
+    renderPeople()
+    if (isOverCap()) endRoom(`The room is full: ${MAX_PEOPLE} people are already listening.`)
+  }
+  actions.state.onMessage = (state, { peerId: id }) => {
+    if (!isState(state)) return
+    if (sync.state && !isNewer(state, sync.state)) {
+      // Stale (e.g. restored after a refresh while the room moved on): bring them up to date.
+      if (isNewer(sync.state, state)) actions.state.send(sync.state, { target: id })
+      return
+    }
+    sync.receive(state)
+    renderNowPlaying()
+    save()
+  }
+  actions.chat.onMessage = (msg) => isChat(msg) && receiveChat(msg)
 }
 
-function inviteUrl(code) {
-  return `${location.origin}${location.pathname}#offer=${code}`
-}
-
-function renderInvite() {
-  const full = isFull()
-  $('invite-full').hidden = !full
-  $('invite-steps').hidden = full
-  $('invite-link').value = currentInvite ? inviteUrl(currentInvite.code) : 'Preparing a fresh link…'
-  $('copy-invite').disabled = !currentInvite
-  $('let-in').disabled = !currentInvite
+/** Whoever arrived after the first MAX_PEOPLE leaves. Older members stay, even after a refresh. */
+function isOverCap() {
+  const before = [...people.values()].filter((p) => p.joinedAt < session.joinedAt).length
+  return before >= MAX_PEOPLE
 }
 
 function renderPeople() {
-  const list = [{ name: 'You', tag: 'host' }, ...[...guests.values()].map((g) => ({ name: g.name, tag: g.connected ? '' : 'connecting…' }))]
+  const others = [...people.values()].sort((a, b) => a.joinedAt - b.joinedAt)
   $('people').replaceChildren(
-    ...list.map(({ name, tag }) => {
-      const li = document.createElement('li')
-      li.textContent = name
-      if (tag) li.append(Object.assign(document.createElement('small'), { textContent: tag }))
-      return li
-    }),
+    ...[{ name: 'You' }, ...others].map(({ name }) => Object.assign(document.createElement('li'), { textContent: name })),
   )
-  const connected = [...guests.values()].filter((g) => g.connected).length + 1
-  $('people-count').textContent = `${connected}/${MAX_PEOPLE}`
-  setStatus(`Hosting · ${connected}/${MAX_PEOPLE}`, 'ok')
+  const count = others.length + 1
+  $('people-count').textContent = `${count}/${MAX_PEOPLE}`
+  setStatus(others.length ? `In the room · ${count}` : 'Waiting for friends…', others.length ? 'ok' : '')
 }
 
-async function letIn(code) {
-  showError('invite-error', '')
-  let answer
-  try {
-    answer = await decode(code)
-  } catch {
-    return showError('invite-error', "That doesn't look like an answer code. Ask your friend to copy it again.")
-  }
-  if (!currentInvite || answer.id !== currentInvite.id) {
-    return showError('invite-error', 'This code belongs to an older invite link. Send your friend the current link.')
-  }
-  const invite = currentInvite
-  try {
-    await invite.pc.setRemoteDescription({ type: 'answer', sdp: answer.sdp })
-  } catch (err) {
-    return showError('invite-error', `Couldn't use that code: ${err.message}`)
-  }
-  $('answer-input').value = ''
-  currentInvite = null
-  addGuest(invite)
-  refreshInvite()
-}
-
-function addGuest({ id, pc, channel }) {
-  const guest = { name: `Friend ${++guestCounter}`, pc, channel, connected: false }
-  guests.set(id, guest)
-  renderPeople()
-
-  const drop = () => {
-    if (!guests.has(id)) return
-    guests.delete(id)
-    pc.close()
-    renderPeople()
-    refreshInvite()
-  }
-  const timeout = setTimeout(() => !guest.connected && drop(), CONNECT_TIMEOUT_MS)
-
-  channel.onopen = () => {
-    clearTimeout(timeout)
-    guest.connected = true
-    if (sync.state) send(channel, sync.state)
-    for (const msg of chatLog) send(channel, msg)
-    renderPeople()
-  }
-  channel.onclose = drop
-  pc.onconnectionstatechange = () => pc.connectionState === 'failed' && drop()
-  channel.onmessage = (e) => {
-    const msg = parseMessage(e.data)
-    if (isChat(msg)) {
-      const stamped = { ...msg, name: guest.name } // guests can't pick their own name
-      receiveChat(stamped)
-      for (const other of guests.values()) if (other !== guest) send(other.channel, stamped)
-      return
-    }
-    if (!isState(msg)) return
-    const state = msg
-    // Host arbitrates: last sentAt wins. Correct a guest that sent something stale.
-    if (sync.state && state.sentAt < sync.state.sentAt) return send(channel, sync.state)
-    sync.receive(state)
-    renderNowPlaying()
-    sendToGuests(state) // including the sender, so everyone converges on the same last state
-  }
-}
-
-$('create-room').addEventListener('click', startHosting)
-$('copy-invite').addEventListener('click', (e) => copy($('invite-link').value, e.currentTarget))
-$('answer-form').addEventListener('submit', (e) => {
-  e.preventDefault()
-  const code = $('answer-input').value.trim()
-  if (code) letIn(code)
-})
-
-// ---------- guest ----------
-
-let hostChannel = null
-let guestPc = null
-
-async function startJoining(offerCode) {
-  role = 'guest'
+/** Resolves with the name the user submits, remembered for next time. */
+function askName() {
   show('join')
-  let code
-  try {
-    const offer = await decode(offerCode)
-    ;({ pc: guestPc, code } = await answerInvite(offer, peerId))
-  } catch {
-    return showError('join-error', 'This invite link looks broken. Ask your host for a new one.')
-  }
-  $('answer-code').value = code
-  $('copy-answer').disabled = false
-  $('join-status').textContent = 'Waiting for the host to let you in…'
-
-  guestPc.addEventListener('datachannel', ({ channel }) => {
-    hostChannel = channel
-    channel.onmessage = (e) => {
-      const msg = parseMessage(e.data)
-      if (isChat(msg)) return receiveChat(msg)
-      if (!isState(msg)) return
-      sync.receive(msg)
-      renderNowPlaying()
-    }
-    channel.onclose = () => endRoom('The host left, so the room is closed.')
-    const onOpen = () => {
-      setStatus('Connected to host', 'ok')
-      enterRoom()
-      $('start-overlay').hidden = false
-    }
-    if (channel.readyState === 'open') onOpen()
-    else channel.onopen = onOpen
-  })
-  guestPc.addEventListener('connectionstatechange', () => {
-    if (guestPc.connectionState === 'connecting') $('join-status').textContent = 'Connecting…'
-    if (guestPc.connectionState === 'failed' && hostChannel?.readyState !== 'open') {
-      showError('join-error', "Couldn't connect. One of you may be on a strict network (mobile data, office Wi-Fi). Try another network.")
-    }
+  $('join-title').textContent = creating ? 'Your room is ready 🎶' : "You're invited 🎶"
+  const input = $('guest-name')
+  input.value = localStorage.getItem(NAME_KEY) ?? ''
+  input.focus()
+  return new Promise((resolve) => {
+    $('name-form').addEventListener('submit', function onSubmit(e) {
+      e.preventDefault()
+      const name = cleanName(input.value)
+      if (!name) return
+      $('name-form').removeEventListener('submit', onSubmit)
+      localStorage.setItem(NAME_KEY, name)
+      resolve(name)
+    })
   })
 }
 
-$('copy-answer').addEventListener('click', (e) => copy($('answer-code').value, e.currentTarget))
+$('copy-invite').addEventListener('click', (e) => copy($('invite-link').value, e.currentTarget))
 
 // ---------- boot ----------
 
 addEventListener('pagehide', () => {
-  for (const guest of guests.values()) guest.pc.close()
-  currentInvite?.pc.close()
-  guestPc?.close()
+  save()
+  room?.leave()
 })
 
-addEventListener('hashchange', () => location.hash.includes('offer=') && location.reload())
+function hashPassphrase() {
+  return cleanPassphrase(new URLSearchParams(location.hash.slice(1)).get('room'))
+}
 
-const offerCode = new URLSearchParams(location.hash.slice(1)).get('offer')
+addEventListener('hashchange', () => {
+  const phrase = hashPassphrase()
+  if (!phrase || phrase === passphrase) return
+  if (passphrase) return location.reload() // switching rooms: start from a clean page
+  openRoom(phrase)
+})
+
 if (location.protocol === 'file:') {
   show('home')
   $('create-room').disabled = true
   showError('home-error', 'jukebox needs to be served over http(s). Run `npx serve` in this folder and open the URL it prints.')
-} else if (offerCode) {
-  history.replaceState(null, '', location.pathname + location.search) // the offer is single-use
-  startJoining(offerCode)
+} else if (hashPassphrase()) {
+  openRoom(hashPassphrase())
 } else {
   show('home')
 }

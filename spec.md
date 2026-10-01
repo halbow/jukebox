@@ -17,33 +17,33 @@ the same YouTube video at the same time. Play / pause / seek / change video are 
 
 ## Architecture
 
-### Connection: WebRTC with copy/paste signaling
+### Connection: passphrase rooms over Trystero (Nostr)
 
-No signaling server. Users exchange connection codes by hand (WhatsApp, Slack, …).
+No signaling server of our own. Peers find each other through public Nostr relays with
+[Trystero](https://github.com/dmotz/trystero), loaded from a CDN.
 
 ```
-HOST                                   GUEST
-1. "Create room" → OFFER
-2. Shares link  #offer=<code>  ──────▶ 3. Opens link → ANSWER code shown
-5. Pastes answer ◀───────────────────── 4. Sends answer code back
-6. ✅ P2P data channel open
+CREATOR                                 FRIEND
+1. "Create room" → passphrase
+2. Shares  #room=<passphrase>       ───▶ 3. Opens link (or pastes the passphrase), picks a name
+4. ✅ Trystero exchanges the handshake over the relays, P2P data channels open
 ```
 
-- Non-trickle ICE: wait for `iceGatheringState === 'complete'` before showing a code.
-- Codes: `JSON → deflate (CompressionStream) → base64url`.
-- Offer goes in the URL hash, so the guest only clicks. Only the answer needs to be pasted.
-- ICE servers: public STUN only.
-  ```js
-  [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }]
-  ```
-- TURN is out of scope for v1. It's the fallback if strict NAT (mobile data, corporate) blocks the connection.
+- Passphrase: 8 random words from the EFF short wordlist (~83 bits). It's copy/pasted, never typed, so length is free.
+- It's both the Trystero room id and its `password`, so relays only see an encrypted handshake.
+  Anyone who has the passphrase can join.
+- Only the handshake touches the relays. Sync and chat travel peer to peer.
+- ICE servers: Trystero's default public STUN. TURN is still out of scope.
 
-### Topology: star
+### Topology: mesh
 
-- The host keeps one `RTCPeerConnection` per guest and repeats the offer/answer exchange per guest.
-- The host is the source of truth and relays every event to all other guests.
-- Target: 2–8 people.
-- If the host leaves, the room ends.
+- Every peer connects to every other peer. Nobody is the host: the room lives as long as someone is in it.
+- Soft cap of 12 people: whoever joined after the first 12 leaves with a "room full" message.
+
+### Survive a refresh
+
+- The passphrase stays in the URL; name, peer id, join time, current `State` and chat are saved per tab in `sessionStorage`.
+- A refresh rejoins the same room, restores the video (via `expectedPosition`) and chat, and reconnects automatically.
 
 ### Sync protocol
 
@@ -64,16 +64,17 @@ type State = {
   then load / seek / play / pause the local player.
 - **Echo guard:** changes applied from remote must not be re-broadcast (flag while applying).
 - **Drift:** only seek if `|local - expected| > 1s`.
-- A new guest gets the current state from the host as soon as the channel opens.
-- Conflicts: last `sentAt` wins (the host arbitrates).
+- A newcomer gets the current state from every peer as soon as they connect, and keeps the newest.
+- Conflicts: last `sentAt` wins, ties broken by peer id. Every peer applies the same rule, so all converge.
 
 ## UI (v1)
 
 - Home: "Create room" button.
-- Host view: offer link plus copy button, "paste answer" field, connected peer count.
-- Guest view: their answer code plus copy button, "waiting for host…" status.
+- Home: "Create room", and a field to join by pasting a passphrase.
+- Name prompt before entering a room (remembered locally). Peers announce names to each other on connect.
+- Invite card: room link plus copy button, and the passphrase. People list with count.
 - Room: YouTube player, URL input to change video, connection status.
-- Room chat: short text messages to agree on the next video. The host names senders and relays; late joiners get the last 50 messages.
+- Room chat: short text messages to agree on the next video. Late joiners get the last 50 messages from everyone, deduplicated.
 - A "Join / click to start" button to satisfy the browser autoplay policy.
 - Cosy vibe: warm dark theme, jukebox feel.
 
@@ -81,8 +82,6 @@ type State = {
 
 - Queue / playlist
 - TURN relay
-- Persistent rooms / reconnect without a new exchange
-- Automatic signaling (Trystero / Nostr), a possible v2 that swaps only the signaling layer
 - Mobile Safari polish
 
 ## Known pitfalls
@@ -90,7 +89,9 @@ type State = {
 - Autoplay with sound requires a user gesture.
 - Ads differ per user, so re-sync when the player enters `PLAYING`.
 - Buffering on one peer must not pause everyone.
-- Offer and answer codes contain the public IP. That's expected for P2P.
+- Handshakes contain the public IP. They're encrypted with the passphrase on the relays; peers see each other's IP, as expected for P2P.
+- jukebox depends on public Nostr relays being up (volunteer-run, no SLA). Trystero connects to several at once.
+- Hidden or long-backgrounded tabs get throttled by the browser and may fail to reconnect until they're reloaded.
 
 ## Milestones
 

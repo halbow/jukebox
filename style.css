@@ -172,8 +172,7 @@ main {
   font-size: 1.1rem;
 }
 
-input,
-textarea {
+input {
   width: 100%;
   padding: 10px 14px;
   border: 1px solid var(--line);
@@ -185,16 +184,8 @@ textarea {
   transition: border-color 0.15s;
 }
 
-input:focus,
-textarea:focus {
+input:focus {
   border-color: var(--amber);
-}
-
-textarea {
-  resize: vertical;
-  font: 12px/1.4 ui-monospace, 'SF Mono', Menlo, monospace;
-  word-break: break-all;
-  margin-bottom: 12px;
 }
 
 .copy-row {
@@ -208,8 +199,21 @@ textarea {
   color: var(--muted);
 }
 
-#answer-form .btn {
-  width: 100%;
+.name-row {
+  display: flex;
+  gap: 8px;
+}
+
+.join-row {
+  margin-top: 22px;
+}
+
+code.passphrase {
+  display: block;
+  color: var(--amber);
+  font: 0.95rem ui-monospace, 'SF Mono', Menlo, monospace;
+  user-select: all;
+  overflow-wrap: anywhere;
 }
 
 .step {
@@ -218,19 +222,6 @@ textarea {
   gap: 10px;
   color: var(--muted);
   margin-bottom: 10px;
-}
-
-.num {
-  flex: none;
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(244, 162, 89, 0.18);
-  color: var(--amber);
-  font-size: 0.8rem;
-  font-weight: 700;
 }
 
 .hint {
@@ -266,22 +257,6 @@ textarea {
 .pill[data-tone='ok']::before {
   background: var(--ok);
   box-shadow: 0 0 8px var(--ok);
-}
-
-.status-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 1em 0 0;
-  color: var(--muted);
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--amber);
-  animation: pulse 1.6s ease-in-out infinite;
 }
 
 /* ---------- room ---------- */
@@ -457,13 +432,6 @@ textarea {
   }
 }
 
-@keyframes pulse {
-  50% {
-    opacity: 0.35;
-    transform: scale(0.8);
-  }
-}
-
 @keyframes shake {
   25% {
     transform: translateX(-6px);
@@ -480,8 +448,7 @@ textarea {
 
 @media (prefers-reduced-motion: reduce) {
   .vinyl.big,
-  .vinyl.spinning,
-  .dot {
+  .vinyl.spinning {
     animation: none;
   }
 }
