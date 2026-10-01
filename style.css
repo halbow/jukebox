@@ -188,13 +188,13 @@ body:has(#view-room:not([hidden])) .topbar {
   }
 
   /* The 16:9 screen grows with its column, so cap the room's width to what the window's height can show:
-     the screen plus the 232px of top bar, now playing, link form and padding, next to the 384px chat column. */
+     the screen plus the 232px of top bar, link form, Up next / Pause row and padding, next to the 384px chat column. */
   body:has(.view.room:not(.chat-mode)) {
     --room-width: max(720px, calc((100vh - 232px) * 16 / 9 + 384px));
   }
 
   /* Plus the Up next strip, when there is one. */
-  body:has(.view.room:not(.chat-mode) .queue:not([hidden])) {
+  body:has(.view.room:not(.chat-mode) .queue-list:not(:empty)) {
     --room-width: max(720px, calc((100vh - 390px) * 16 / 9 + 384px));
   }
 
@@ -362,28 +362,6 @@ input:focus {
   cursor: pointer;
 }
 
-.now-playing-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 18px 4px 0;
-}
-
-.now-playing {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.now-playing::before {
-  content: '♪ Now playing · ';
-  color: var(--amber);
-}
-
 .video-form {
   display: flex;
   gap: 10px;
@@ -395,15 +373,27 @@ input:focus {
 }
 
 /* Up next: a strip of thumbnails that scrolls sideways, so a long queue never pushes the page down. */
-.queue {
-  margin-top: 18px;
+/* Under the link: Up next and Play next on the left, Pause for me on the right. */
+.queue-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 4px 0;
 }
 
-.queue .count {
+.queue-bar:not(:has(> :not([hidden]))) {
+  display: none;
+}
+
+.queue-bar h3 {
+  margin: 0;
+}
+
+.queue-bar .count {
   margin-left: 0;
 }
 
-.queue h3 .btn {
+#pause-locally {
   margin-left: auto;
 }
 
@@ -411,10 +401,14 @@ input:focus {
   display: flex;
   gap: 12px;
   list-style: none;
-  margin: 0;
+  margin: 12px 0 0;
   padding: 0 0 6px;
   overflow-x: auto;
   counter-reset: queue;
+}
+
+.queue-list:empty {
+  display: none;
 }
 
 .queue-list li {

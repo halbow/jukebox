@@ -74,23 +74,21 @@
               <small>The others are still listening.</small>
             </button>
           </div>
-          <div class="now-playing-row" id="now-playing-row" hidden>
-            <p class="now-playing" id="now-playing"></p>
-            <button id="pause-locally" class="btn small" title="Stop the music here only, the others keep listening">⏸ Pause for me</button>
-          </div>
           <form id="video-form" class="video-form">
             <input id="video-url" type="text" placeholder="Paste a YouTube link…" autocomplete="off" />
             <button type="button" id="queue-video" class="btn" title="Add it to Up next">+ Queue</button>
             <button class="btn primary">Play</button>
           </form>
-          <section class="queue" id="queue" hidden>
-            <h3>
+          <p class="error" id="room-error" hidden></p>
+          <!-- The room's queue on the left, what's only yours on the right. -->
+          <div class="queue-bar">
+            <h3 id="queue-title" hidden>
               Up next <span class="count" id="queue-count"></span>
               <button id="next-video" class="btn small" title="Skip to the next video, for everyone">⏭ Play next</button>
             </h3>
-            <ol id="queue-list" class="queue-list"></ol>
-          </section>
-          <p class="error" id="room-error" hidden></p>
+            <button id="pause-locally" class="btn small" title="Stop the music here only, the others keep listening" hidden>⏸ Pause for me</button>
+          </div>
+          <ol id="queue-list" class="queue-list"></ol>
         </div>
 
         <aside class="card chat">

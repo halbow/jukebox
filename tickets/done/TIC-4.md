@@ -12,7 +12,7 @@ Allow several video for later and haev a samll playlist
 
 - **Shared queue**, one list for the room, synced whole like the `State` (last `sentAt` wins).
 - **+ Queue** next to Play (Enter still plays). If nothing is playing, Queue plays right away.
-- **⏭ Play next** in the Up next header, not next to "Pause for me": one acts for everyone, the other only for you. Clicking a thumbnail plays it now; ✕ removes it. Anyone can do it.
+- **Layout** under the player: link bar (+ Queue / Play), then "Up next · ⏭ Play next" on the left and "⏸ Pause for me" on the right, room-wide vs only you. The "Now playing" line is gone. Clicking a thumbnail plays it now; ✕ removes it. Anyone can do it.
 - **Auto-advance** when a video ends. Guard: only if the room is still on the ended video and it ended within 10s of the expected position, so a peer back from a refresh can't skip the room ahead. Not under "Pause for me".
 - **Thumbnail + "added by"**, no title: the link only has the id, a title would need a request to YouTube (oEmbed).
 - No reordering for now. No chat message on queue.

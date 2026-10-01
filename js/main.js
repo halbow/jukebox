@@ -76,10 +76,8 @@ function cleanName(name) {
 
 function renderNowPlaying() {
   const playing = player?.getPlayerState() === PLAYER_STATE.PLAYING
-  const title = player?.getVideoData?.()?.title
   $('empty-screen').hidden = Boolean(sync.state)
-  $('now-playing').textContent = title ? title : ''
-  $('now-playing-row').hidden = !title
+  $('pause-locally').hidden = !player?.getVideoData?.()?.video_id
   document.querySelectorAll('.vinyl').forEach((el) => el.classList.toggle('spinning', playing))
 }
 
@@ -567,7 +565,7 @@ function autoAdvance() {
 }
 
 function renderQueue() {
-  $('queue').hidden = !queue.items.length
+  $('queue-title').hidden = !queue.items.length
   $('queue-count').textContent = queue.items.length
   $('queue-list').replaceChildren(
     ...queue.items.map((item) => {
