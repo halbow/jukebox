@@ -182,8 +182,9 @@ body:has(#view-room:not([hidden])) .topbar {
     max-height: none;
   }
 
-  .view.room .chat-form {
-    margin-top: auto;
+  /* With no messages yet, everything under the empty hint (command hint, GIF preview, input) sits at the bottom. */
+  .view.room .chat-empty {
+    margin-bottom: auto;
   }
 
   /* The 16:9 screen grows with its column, so cap the room's width to what the window's height can show:
@@ -487,6 +488,15 @@ input:focus {
   border-color: var(--amber);
 }
 
+.chat .chat-command {
+  margin: 0 0 6px;
+}
+
+.chat-form.command input {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
 .chat-form {
   position: relative;
   display: flex;
@@ -527,6 +537,11 @@ input:focus {
   vertical-align: middle;
 }
 
+.emoji-suggestions li small {
+  margin-left: 8px;
+  opacity: 0.7;
+}
+
 .emoji-suggestions li[aria-selected='true'] {
   background: rgba(244, 162, 89, 0.18);
   color: var(--text);
@@ -553,9 +568,8 @@ input:focus {
   height: 200px;
 }
 
-.chat-log .gif + small {
-  display: block;
-  margin: 2px 0 0;
+.chat-log .gif-query {
+  margin-left: 0;
 }
 
 /* Only you see it, between the log and the input. */

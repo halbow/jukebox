@@ -1,6 +1,6 @@
 import { HISTORY_SIZE, MAX_CHAT_LENGTH, chatKey, createChat, editChat, isChat, isNewerEdit, senderColor } from './chat.js'
 import { completedShortcodeAt, replaceShortcodes, shortcodeAt, suggest } from './emoji.js'
-import { KEY_HELP_URL, checkKey, gifStillUrl, gifUrl, loadKey, parseGiphyCommand, saveKey, searchGifs } from './giphy.js'
+import { KEY_HELP_URL, checkKey, completesCommand, gifStillUrl, gifUrl, loadKey, parseGiphyCommand, saveKey, searchGifs } from './giphy.js'
 import { createPassphrase, parsePassphrase } from './passphrase.js'
 import { joinJukebox, randomId } from './room.js'
 import { Sync, isNewer, isState } from './sync.js'
@@ -188,9 +188,14 @@ function renderChat() {
       li.classList.toggle('mine', mine)
       const sender = Object.assign(document.createElement('b'), { textContent: mine ? 'You' : msg.name })
       if (!mine) sender.style.color = senderColor(msg.from)
-      li.append(sender, msg.text)
+      if (msg.gif) {
+        // the search reads as the command it was, not as something said
+        li.append(sender, Object.assign(document.createElement('small'), { className: 'gif-query', textContent: `/giphy ${msg.text}` }))
+        li.append(gifElement(msg.gif, msg.text))
+      } else {
+        li.append(sender, msg.text)
+      }
       if (msg.editedAt) li.append(Object.assign(document.createElement('small'), { textContent: '(edited)' }))
-      if (msg.gif) li.append(gifElement(msg.gif, msg.text), Object.assign(document.createElement('small'), { textContent: 'via /giphy' }))
       return li
     }),
   )
@@ -205,6 +210,7 @@ $('chat-form').addEventListener('submit', (e) => {
   if (command) {
     input.value = ''
     closeEmoji()
+    renderCommandHint()
     if (command.key) return askGiphyKey()
     if (!command.query) return showGiphy({ error: "Say what you're looking for, e.g. /giphy dancing cat" })
     return searchGiphy(command.query)
@@ -229,6 +235,7 @@ function startEditing() {
   input.setSelectionRange(input.value.length, input.value.length)
   $('chat-form').classList.add('editing')
   $('chat-editing').hidden = false
+  renderCommandHint()
 }
 
 function stopEditing() {
@@ -398,7 +405,7 @@ function sendGiphy() {
 
 // ---------- emoji ----------
 
-let emojiOpen = null // { start, suggestions, selected } while the `:` list is showing
+let emojiOpen = null // { start, suggestions, selected } while the `:` (or `/`) list is showing
 
 function closeEmoji() {
   emojiOpen = null
@@ -409,11 +416,12 @@ function closeEmoji() {
 function renderEmoji() {
   const list = $('emoji-suggestions')
   list.replaceChildren(
-    ...emojiOpen.suggestions.map(({ name, emoji }, i) => {
+    ...emojiOpen.suggestions.map(({ icon, label, detail }, i) => {
       const li = document.createElement('li')
       li.role = 'option'
       li.ariaSelected = String(i === emojiOpen.selected)
-      li.append(Object.assign(document.createElement('span'), { textContent: emoji }), `:${name}:`)
+      li.append(Object.assign(document.createElement('span'), { textContent: icon }), label)
+      if (detail) li.append(Object.assign(document.createElement('small'), { textContent: detail }))
       // mousedown, not click: keeps the focus (and the caret) in the input
       li.addEventListener('mousedown', (e) => {
         e.preventDefault()
@@ -429,18 +437,42 @@ function renderEmoji() {
 
 function pickEmoji(i) {
   const input = $('chat-input')
-  input.setRangeText(emojiOpen.suggestions[i].emoji + ' ', emojiOpen.start, input.selectionStart, 'end')
+  input.setRangeText(emojiOpen.suggestions[i].insert, emojiOpen.start, input.selectionStart, 'end')
   closeEmoji()
+  renderCommandHint()
+}
+
+const GIPHY_SUGGESTION = { icon: '🎞️', label: '/giphy', detail: '[search] · send a GIF', insert: '/giphy ' }
+
+function suggestionsAt(input) {
+  if (!editing && completesCommand(input.value)) return { start: 0, suggestions: [GIPHY_SUGGESTION] }
+  const typing = shortcodeAt(input.value, input.selectionStart)
+  const found = typing ? suggest(typing.query) : []
+  const suggestions = found.map(({ name, emoji }) => ({ icon: emoji, label: `:${name}:`, insert: emoji + ' ' }))
+  return { start: typing?.start, suggestions }
+}
+
+// While a `/giphy …` is typed, say it's a command and what Enter will do.
+function renderCommandHint() {
+  const command = !editing && parseGiphyCommand($('chat-input').value)
+  $('chat-form').classList.toggle('command', !!command)
+  $('chat-command').hidden = !command
+  if (!command) return
+  $('chat-command').textContent = command.key
+    ? '/giphy · Enter to change your Giphy key'
+    : command.query
+      ? `/giphy · Enter to search Giphy for “${command.query}”`
+      : '/giphy · type what you’re looking for'
 }
 
 $('chat-input').addEventListener('input', (e) => {
   const input = e.target
   const done = completedShortcodeAt(input.value, input.selectionStart)
   if (done) input.setRangeText(done.emoji, done.start, done.end, 'end')
-  const typing = shortcodeAt(input.value, input.selectionStart)
-  const suggestions = typing ? suggest(typing.query) : []
+  renderCommandHint()
+  const { start, suggestions } = suggestionsAt(input)
   if (!suggestions.length) return closeEmoji()
-  emojiOpen = { start: typing.start, suggestions, selected: 0 }
+  emojiOpen = { start, suggestions, selected: 0 }
   renderEmoji()
 })
 
@@ -452,7 +484,7 @@ $('chat-input').addEventListener('keydown', (e) => {
     emojiOpen.selected = (emojiOpen.selected + (e.key === 'ArrowDown' ? 1 : -1) + count) % count
     renderEmoji()
   } else if (e.key === 'Enter' || e.key === 'Tab') {
-    e.preventDefault() // pick the emoji, don't send the message
+    e.preventDefault() // pick it, don't send the message
     pickEmoji(emojiOpen.selected)
   } else if (e.key === 'Escape') {
     closeEmoji()

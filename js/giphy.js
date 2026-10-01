@@ -30,6 +30,11 @@ export function parseGiphyCommand(text) {
   return query.toLowerCase() === 'key' ? { key: true } : { query }
 }
 
+/** Typing `/`, `/gi`… (no space yet) offers the command, like `:` offers emoji. */
+export function completesCommand(text) {
+  return /^\/\w*$/.test(text) && '/giphy'.startsWith(text.toLowerCase())
+}
+
 export function loadKey() {
   return localStorage.getItem(KEY_KEY) ?? ''
 }

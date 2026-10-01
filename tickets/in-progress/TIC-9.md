@@ -18,7 +18,7 @@ I want ot be able to search for a gif and send it in the chat
 - **Message shape:** `{ ...chat, text: <query>, gif: { id, width, height } }`. The query is the caption. Peers get the Giphy **id**, never a URL: each one builds `https://media.giphy.com/media/<id>/200.webp` itself, so nobody can make the room load an arbitrary URL.
 - Results filtered with `rating=pg-13`.
 - GIF messages can't be edited (↑ skips them).
-- `prefers-reduced-motion` shows the still frame. A GIF that no longer loads shows "GIF unavailable". A small "via /giphy" under each GIF advertises the command.
+- `prefers-reduced-motion` shows the still frame. A GIF that no longer loads shows "GIF unavailable". In the log, the query shows faded as `/giphy <query>`, so it reads as a command and advertises it. Typing `/` offers `/giphy` in the same list as emoji, and a hint under the log says what Enter will do while a `/giphy …` is typed.
 - Privacy: every peer's browser loads the image from Giphy, so Giphy sees their IP. Noted in the spec.
 
 ## Getting a beta key
