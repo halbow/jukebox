@@ -96,11 +96,6 @@ main {
   margin: 0 auto;
 }
 
-.view.room.solo {
-  grid-template-columns: minmax(0, 1fr);
-  max-width: 1000px;
-}
-
 @media (max-width: 900px) {
   .view.room {
     grid-template-columns: 1fr;
@@ -379,6 +374,41 @@ textarea {
   margin-left: auto;
   color: var(--amber);
   font-weight: 600;
+}
+
+.chat-log {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.chat-log:empty {
+  display: none;
+}
+
+.chat-log li {
+  padding: 6px 0;
+  overflow-wrap: anywhere;
+}
+
+.chat-log b {
+  margin-right: 0.5em;
+  color: var(--amber);
+}
+
+.chat-log li.mine b {
+  color: var(--ok);
+}
+
+.chat .hint {
+  margin: 0 0 12px;
+}
+
+.chat-form {
+  display: flex;
+  gap: 8px;
 }
 
 /* ---------- vinyl ---------- */

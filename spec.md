@@ -73,13 +73,13 @@ type State = {
 - Host view: offer link plus copy button, "paste answer" field, connected peer count.
 - Guest view: their answer code plus copy button, "waiting for host…" status.
 - Room: YouTube player, URL input to change video, connection status.
+- Room chat: short text messages to agree on the next video. The host names senders and relays; late joiners get the last 50 messages.
 - A "Join / click to start" button to satisfy the browser autoplay policy.
 - Cosy vibe: warm dark theme, jukebox feel.
 
 ## Out of scope (v1)
 
 - Queue / playlist
-- Chat
 - TURN relay
 - Persistent rooms / reconnect without a new exchange
 - Automatic signaling (Trystero / Nostr), a possible v2 that swaps only the signaling layer

@@ -19,4 +19,5 @@ Open the printed URL (it must be http(s), not `file://`).
 - `js/signal.js`: WebRTC offer/answer with copy/paste codes (deflate + base64url, non-trickle ICE)
 - `js/sync.js`: keeps the player in line with the shared `State` (echo guard, drift, seek detection)
 - `js/youtube.js`: IFrame Player API loader and URL parsing
-- `js/main.js`: UI, host star relay / arbitration, guest flow
+- `js/chat.js`: chat message shape and validation (the host stamps names and relays)
+- `js/main.js`: UI, host star relay / arbitration, guest flow, chat

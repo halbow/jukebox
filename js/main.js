@@ -1,3 +1,4 @@
+import { HISTORY_SIZE, MAX_CHAT_LENGTH, createChat, isChat } from './chat.js'
 import { answerInvite, createInvite, decode, randomId } from './signal.js'
 import { Sync, isState } from './sync.js'
 import { PLAYER_STATE, createPlayer, parseVideoId } from './youtube.js'
@@ -58,8 +59,7 @@ function send(channel, state) {
 
 function parseMessage(data) {
   try {
-    const msg = JSON.parse(data)
-    return isState(msg) ? msg : null
+    return JSON.parse(data)
   } catch {
     return null
   }
@@ -117,6 +117,34 @@ async function autoPaste() {
   if (!videoId || videoId === text.trim() || sync.state) return
   playVideo(videoId, { playing: false })
 }
+
+// ---------- chat ----------
+
+const chatLog = [] // the host replays it to guests who join late
+
+function receiveChat(msg) {
+  chatLog.push(msg)
+  if (chatLog.length > HISTORY_SIZE) chatLog.shift()
+  const li = document.createElement('li')
+  li.classList.toggle('mine', msg.from === peerId)
+  li.append(Object.assign(document.createElement('b'), { textContent: msg.from === peerId ? 'You' : msg.name }), msg.text)
+  const list = $('chat-log')
+  list.append(li)
+  list.scrollTop = list.scrollHeight
+  $('chat-empty').hidden = true
+}
+
+$('chat-form').addEventListener('submit', (e) => {
+  e.preventDefault()
+  const input = $('chat-input')
+  const text = input.value.trim().slice(0, MAX_CHAT_LENGTH)
+  if (!text) return
+  input.value = ''
+  const msg = createChat(text, { name: 'Host', from: peerId }) // the host renames guest messages
+  receiveChat(msg)
+  if (role === 'host') sendToGuests(msg)
+  else send(hostChannel, msg)
+})
 
 $('video-form').addEventListener('submit', (e) => {
   e.preventDefault()
@@ -249,13 +277,21 @@ function addGuest({ id, pc, channel }) {
     clearTimeout(timeout)
     guest.connected = true
     if (sync.state) send(channel, sync.state)
+    for (const msg of chatLog) send(channel, msg)
     renderPeople()
   }
   channel.onclose = drop
   pc.onconnectionstatechange = () => pc.connectionState === 'failed' && drop()
   channel.onmessage = (e) => {
-    const state = parseMessage(e.data)
-    if (!state) return
+    const msg = parseMessage(e.data)
+    if (isChat(msg)) {
+      const stamped = { ...msg, name: guest.name } // guests can't pick their own name
+      receiveChat(stamped)
+      for (const other of guests.values()) if (other !== guest) send(other.channel, stamped)
+      return
+    }
+    if (!isState(msg)) return
+    const state = msg
     // Host arbitrates: last sentAt wins. Correct a guest that sent something stale.
     if (sync.state && state.sentAt < sync.state.sentAt) return send(channel, sync.state)
     sync.receive(state)
@@ -294,15 +330,15 @@ async function startJoining(offerCode) {
   guestPc.addEventListener('datachannel', ({ channel }) => {
     hostChannel = channel
     channel.onmessage = (e) => {
-      const state = parseMessage(e.data)
-      if (!state) return
-      sync.receive(state)
+      const msg = parseMessage(e.data)
+      if (isChat(msg)) return receiveChat(msg)
+      if (!isState(msg)) return
+      sync.receive(msg)
       renderNowPlaying()
     }
     channel.onclose = () => endRoom('The host left, so the room is closed.')
     const onOpen = () => {
       setStatus('Connected to host', 'ok')
-      views.room.classList.add('solo') // guests have no side panel
       enterRoom()
       $('start-overlay').hidden = false
     }
