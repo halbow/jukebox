@@ -1,4 +1,4 @@
-import { HISTORY_SIZE, MAX_CHAT_LENGTH, chatKey, createChat, isChat } from './chat.js'
+import { HISTORY_SIZE, MAX_CHAT_LENGTH, chatKey, createChat, isChat, senderColor } from './chat.js'
 import { createPassphrase, parsePassphrase } from './passphrase.js'
 import { joinJukebox, randomId } from './room.js'
 import { Sync, isNewer, isState } from './sync.js'
@@ -174,7 +174,9 @@ function renderChat() {
       const mine = msg.from === session.peerId
       const li = document.createElement('li')
       li.classList.toggle('mine', mine)
-      li.append(Object.assign(document.createElement('b'), { textContent: mine ? 'You' : msg.name }), msg.text)
+      const sender = Object.assign(document.createElement('b'), { textContent: mine ? 'You' : msg.name })
+      if (!mine) sender.style.color = senderColor(msg.from)
+      li.append(sender, msg.text)
       return li
     }),
   )
