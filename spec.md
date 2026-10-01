@@ -80,12 +80,14 @@ type State = {
 - `/giphy <search>`, Slack style: a preview only you see, with Send / Shuffle / Cancel (Escape), from 25 results (`rating=pg-13`). Searching needs your own Giphy API key, asked the first time and kept in `localStorage` (`/giphy key` changes or removes it); it never goes to peers, and seeing GIFs needs no key. A GIF message is `{ ...chat, text: <search>, gif: { id, width, height } }`: peers get the Giphy id and build the image URL themselves, never a URL from a peer. GIFs can't be edited, show their still frame under `prefers-reduced-motion`, and "GIF unavailable" once Giphy drops them.
 - Chat mode toggle: the chat takes the room and the video shrinks to a corner, without reloading the player. Remembered locally.
 - Pause for me: stops your player without broadcasting. While paused, room `State`s are still received but not applied; "Rejoin the room" (an overlay over the player, so YouTube's own controls can't broadcast a play) applies the latest one at its live position. Picking a video also rejoins. Peers see a ⏸ on your name (a `pausedLocally` flag in `hello`, resent on change). Not kept across a refresh.
+- Up next (queue): "+ Queue" next to Play adds the link to a shared list shown under the player as a strip of thumbnails ("added by …", no titles: those would need a request to YouTube). Queuing when nothing is playing plays it right away. ⏭ Play next (in the Up next header, away from the personal "Pause for me"), or clicking a thumbnail, plays it and takes it out; ✕ removes it. Anyone can do all of it. When a video ends the next one starts by itself: the peers whose player ended advance only if the room is still on that video and it ended within 10s of when expected (so a peer back from a refresh with an old state can't skip the room ahead), and they all pick the same first item. Not under "Pause for me". The list travels like the `State`, whole, last `sentAt` wins: `{ items: [{ id, videoId, addedBy, from }], sentAt, from }`, capped at 50, sent to newcomers and kept in `sessionStorage`. Thumbnails are built from the video id (`i.ytimg.com`), never a URL from a peer.
+- Auto-paste: when nothing is playing (no video yet, or the room's video ended), a YouTube link in the clipboard is cued paused on focus.
 - A "Join / click to start" button to satisfy the browser autoplay policy.
 - Cosy vibe: warm dark theme, jukebox feel.
 
 ## Out of scope (v1)
 
-- Queue / playlist
+- Reordering the queue
 - TURN relay
 - Mobile Safari polish
 

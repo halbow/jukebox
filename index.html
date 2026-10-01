@@ -80,8 +80,16 @@
           </div>
           <form id="video-form" class="video-form">
             <input id="video-url" type="text" placeholder="Paste a YouTube link…" autocomplete="off" />
+            <button type="button" id="queue-video" class="btn" title="Add it to Up next">+ Queue</button>
             <button class="btn primary">Play</button>
           </form>
+          <section class="queue" id="queue" hidden>
+            <h3>
+              Up next <span class="count" id="queue-count"></span>
+              <button id="next-video" class="btn small" title="Skip to the next video, for everyone">⏭ Play next</button>
+            </h3>
+            <ol id="queue-list" class="queue-list"></ol>
+          </section>
           <p class="error" id="room-error" hidden></p>
         </div>
 

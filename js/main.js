@@ -2,24 +2,26 @@ import { HISTORY_SIZE, MAX_CHAT_LENGTH, chatKey, createChat, editChat, isChat, i
 import { completedShortcodeAt, replaceShortcodes, shortcodeAt, suggest } from './emoji.js'
 import { KEY_HELP_URL, checkKey, completesCommand, gifStillUrl, gifUrl, loadKey, parseGiphyCommand, saveKey, searchGifs } from './giphy.js'
 import { createPassphrase, parsePassphrase } from './passphrase.js'
+import { EMPTY_QUEUE, MAX_QUEUE, isQueue, thumbnailUrl } from './queue.js'
 import { joinJukebox, randomId } from './room.js'
-import { Sync, isNewer, isState } from './sync.js'
-import { PLAYER_STATE, createPlayer, parseVideoId } from './youtube.js'
+import { Sync, expectedPosition, isNewer, isState } from './sync.js'
+import { PLAYER_STATE, createPlayer, currentVideoId, parseVideoId } from './youtube.js'
 
 const MAX_PEOPLE = 12 // you included. Soft cap: in a mesh every extra person costs everyone a connection.
 const MAX_NAME_LENGTH = 24
 const NAME_KEY = 'jukebox:name'
 const LAYOUT_KEY = 'jukebox:layout' // 'chat' when the chat is in focus, the video otherwise
+const END_TOLERANCE_S = 10 // a video only auto-advances if it ended about when the room expected it to
 
 const $ = (id) => document.getElementById(id)
 const views = { home: $('view-home'), room: $('view-room'), ended: $('view-ended') }
 
 let player = null
 let room = null
-let actions = null // { hello, state, chat } Trystero actions
+let actions = null // { hello, state, chat, queue } Trystero actions
 let passphrase = null
 let creating = false // just clicked "Create a room", so the name prompt says so
-// What survives a refresh, per tab and per room: { peerId, name, joinedAt, state, chat }
+// What survives a refresh, per tab and per room: { peerId, name, joinedAt, state, chat, queue }
 let session = null
 
 const people = new Map() // Trystero peer id → { name, joinedAt, pausedLocally }
@@ -87,6 +89,7 @@ function enterRoom() {
   createPlayer('player', {
     onStateChange: (playerState) => {
       sync.onPlayerState(playerState)
+      if (playerState === PLAYER_STATE.ENDED) autoAdvance()
       renderNowPlaying()
     },
   })
@@ -113,9 +116,15 @@ function playVideo(videoId, options) {
   renderNowPlaying()
 }
 
-/** If nothing is playing yet and the clipboard holds a YouTube link, cue it up paused. */
+/** Nothing to listen to: no video yet, or the room's video played to its end. */
+function isIdle() {
+  if (!sync.state) return true
+  return player?.getPlayerState() === PLAYER_STATE.ENDED && currentVideoId(player) === sync.state.videoId
+}
+
+/** If nothing is playing and the clipboard holds a YouTube link, cue it up paused. */
 async function autoPaste() {
-  if (sync.state || views.room.hidden || !navigator.clipboard?.readText) return
+  if (!isIdle() || views.room.hidden || !navigator.clipboard?.readText) return
   let text
   try {
     text = await navigator.clipboard.readText()
@@ -124,7 +133,7 @@ async function autoPaste() {
   }
   const videoId = parseVideoId(text)
   // A bare 11-char word would parse as an id, so only trust actual links.
-  if (!videoId || videoId === text.trim() || sync.state) return
+  if (!videoId || videoId === text.trim() || !isIdle() || videoId === sync.state?.videoId) return
   playVideo(videoId, { playing: false })
 }
 
@@ -142,18 +151,20 @@ function loadSession(phrase) {
         joinedAt: saved.joinedAt,
         state: isState(saved.state) ? saved.state : null,
         chat: Array.isArray(saved.chat) ? saved.chat.filter(isChat) : [],
+        queue: isQueue(saved.queue) ? saved.queue : EMPTY_QUEUE,
       }
     }
   } catch {
     // corrupted or missing: start fresh
   }
-  return { peerId: randomId(), name: '', joinedAt: Date.now(), state: null, chat: [] }
+  return { peerId: randomId(), name: '', joinedAt: Date.now(), state: null, chat: [], queue: EMPTY_QUEUE }
 }
 
 function save() {
   if (!session) return
   session.state = sync.state
   session.chat = chatLog
+  session.queue = queue
   sessionStorage.setItem(sessionKey(passphrase), JSON.stringify(session))
 }
 
@@ -493,19 +504,88 @@ $('chat-input').addEventListener('keydown', (e) => {
 
 $('chat-input').addEventListener('blur', closeEmoji)
 
-$('video-form').addEventListener('submit', (e) => {
-  e.preventDefault()
+/** The video in the link input, or null after shaking it. Clears the input on success. */
+function takeVideoInput() {
   const input = $('video-url')
   const videoId = parseVideoId(input.value)
   if (!videoId) {
     input.classList.remove('shake')
     void input.offsetWidth // restart the animation
     input.classList.add('shake')
-    return
+    return null
   }
   input.value = ''
-  playVideo(videoId)
+  return videoId
+}
+
+$('video-form').addEventListener('submit', (e) => {
+  e.preventDefault()
+  const videoId = takeVideoInput()
+  if (videoId) playVideo(videoId)
 })
+
+$('queue-video').addEventListener('click', () => {
+  const videoId = takeVideoInput()
+  if (!videoId) return
+  if (isIdle()) return playVideo(videoId) // nothing to wait for
+  if (queue.items.length >= MAX_QUEUE) return showError('room-error', `The queue is full (${MAX_QUEUE} videos).`)
+  showError('room-error', '')
+  setQueue([...queue.items, { id: randomId(), videoId, addedBy: session.name, from: session.peerId }])
+  $('video-url').focus()
+})
+
+// ---------- queue ----------
+
+let queue = EMPTY_QUEUE
+
+function setQueue(items) {
+  queue = { items, sentAt: Date.now(), from: session.peerId }
+  actions?.queue.send(queue)
+  renderQueue()
+  save()
+}
+
+/** Plays a queued video now and takes it out of the queue. */
+function playFromQueue(id) {
+  const item = queue.items.find((it) => it.id === id)
+  if (!item) return
+  setQueue(queue.items.filter((it) => it !== item))
+  playVideo(item.videoId)
+}
+
+/**
+ * Every peer sees the video end at about the same time. Only advance if the room is still on it,
+ * and if it ended about when expected: a peer back from a refresh restores an old state past
+ * the video's end, and must not skip the room ahead before it hears where the room is.
+ */
+function autoAdvance() {
+  const { state } = sync
+  if (!queue.items.length || !state?.playing || sync.pausedLocally) return
+  if (currentVideoId(player) !== state.videoId) return
+  if (Math.abs(expectedPosition(state) - player.getDuration()) > END_TOLERANCE_S) return
+  playFromQueue(queue.items[0].id)
+}
+
+function renderQueue() {
+  $('queue').hidden = !queue.items.length
+  $('queue-count').textContent = queue.items.length
+  $('queue-list').replaceChildren(
+    ...queue.items.map((item) => {
+      const li = document.createElement('li')
+      const play = Object.assign(document.createElement('button'), { type: 'button', className: 'queue-play', title: 'Play it now' })
+      const thumb = Object.assign(document.createElement('img'), { src: thumbnailUrl(item.videoId), alt: '', loading: 'lazy', width: 160, height: 90 })
+      const by = item.from === session.peerId ? 'you' : item.addedBy || 'Friend'
+      play.append(thumb, Object.assign(document.createElement('small'), { textContent: `Added by ${by}` }))
+      play.addEventListener('click', () => playFromQueue(item.id))
+      const remove = button('✕', () => setQueue(queue.items.filter((it) => it.id !== item.id)), 'icon-btn queue-remove')
+      remove.title = remove.ariaLabel = 'Remove from the queue'
+      li.append(play, remove)
+      return li
+    }),
+  )
+}
+
+$('next-video').addEventListener('click', () => queue.items.length && playFromQueue(queue.items[0].id))
 
 function setPausedLocally(paused) {
   if (paused) sync.pauseLocally()
@@ -546,7 +626,9 @@ async function openRoom(phrase) {
   session = loadSession(phrase)
   sync.peerId = session.peerId
   chatLog = session.chat
+  queue = session.queue
   renderChat()
+  renderQueue()
 
   if (session.state) sync.receive(session.state) // resumes where it was, `expectedPosition` covers the gap
   enterRoom() // behind the name prompt, so the player loads while you type
@@ -572,12 +654,18 @@ async function connect() {
   } catch (err) {
     return showError('room-error', `Couldn't reach the relays (${err.message}). Check your connection and reload.`)
   }
-  actions = { hello: room.makeAction('hello'), state: room.makeAction('state'), chat: room.makeAction('chat') }
+  actions = {
+    hello: room.makeAction('hello'),
+    state: room.makeAction('state'),
+    chat: room.makeAction('chat'),
+    queue: room.makeAction('queue'),
+  }
 
   room.onPeerJoin = (id) => {
     const target = { target: id }
     actions.hello.send(hello(), target)
     if (sync.state) actions.state.send(sync.state, target)
+    if (queue.sentAt) actions.queue.send(queue, target)
     for (const msg of chatLog) actions.chat.send(msg, target)
   }
   room.onPeerLeave = (id) => {
@@ -603,6 +691,16 @@ async function connect() {
     save()
   }
   actions.chat.onMessage = (msg) => isChat(msg) && receiveChat(msg)
+  actions.queue.onMessage = (msg, { peerId: id }) => {
+    if (!isQueue(msg)) return
+    if (!isNewer(msg, queue)) {
+      if (isNewer(queue, msg)) actions.queue.send(queue, { target: id }) // stale: bring them up to date
+      return
+    }
+    queue = msg
+    renderQueue()
+    save()
+  }
 }
 
 function hello() {

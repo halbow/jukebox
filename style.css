@@ -193,6 +193,11 @@ body:has(#view-room:not([hidden])) .topbar {
     --room-width: max(720px, calc((100vh - 232px) * 16 / 9 + 384px));
   }
 
+  /* Plus the Up next strip, when there is one. */
+  body:has(.view.room:not(.chat-mode) .queue:not([hidden])) {
+    --room-width: max(720px, calc((100vh - 390px) * 16 / 9 + 384px));
+  }
+
   /* The corner video is too short to set the row height, so the chat fills the window instead. */
   .view.room.chat-mode .chat {
     height: calc(100vh - 112px);
@@ -383,6 +388,98 @@ input:focus {
   display: flex;
   gap: 10px;
   margin-top: 16px;
+}
+
+.video-form .btn {
+  flex-shrink: 0;
+}
+
+/* Up next: a strip of thumbnails that scrolls sideways, so a long queue never pushes the page down. */
+.queue {
+  margin-top: 18px;
+}
+
+.queue .count {
+  margin-left: 0;
+}
+
+.queue h3 .btn {
+  margin-left: auto;
+}
+
+.queue-list {
+  display: flex;
+  gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 6px;
+  overflow-x: auto;
+  counter-reset: queue;
+}
+
+.queue-list li {
+  position: relative;
+  flex: 0 0 160px;
+  counter-increment: queue;
+}
+
+.queue-play {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.queue-play img {
+  display: block;
+  width: 160px;
+  height: 90px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  transition: border-color 0.15s;
+}
+
+.queue-play:hover img,
+.queue-play:focus-visible img {
+  border-color: var(--amber);
+}
+
+/* The position in the queue, over the thumbnail's corner. */
+.queue-play::before {
+  content: counter(queue);
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(22, 16, 13, 0.85);
+  color: var(--amber);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.queue-play small {
+  display: block;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queue-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(22, 16, 13, 0.85);
+  color: var(--text);
+  font-size: 0.8rem;
 }
 
 /* Who's in the room tops the chat card, names as chips so a full room still fits in a few lines. */
