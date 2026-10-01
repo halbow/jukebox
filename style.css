@@ -90,15 +90,30 @@ main {
 
 .view.room {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: 220px minmax(0, 1fr) 340px;
+  grid-template-areas: 'people stage chat';
   gap: 24px;
-  max-width: 1280px;
+  max-width: 1560px;
   margin: 0 auto;
+}
+
+.room-people {
+  grid-area: people;
+  align-self: start;
+}
+
+.stage {
+  grid-area: stage;
+}
+
+.view.room .chat {
+  grid-area: chat;
 }
 
 @media (max-width: 900px) {
   .view.room {
     grid-template-columns: 1fr;
+    grid-template-areas: 'stage' 'people' 'chat';
   }
 }
 
@@ -132,35 +147,23 @@ main {
   text-align: center;
 }
 
-.side {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* On desktop the side is exactly as tall as the 16:9 screen next to it (column width minus side and gap),
-   and the chat takes whatever height is left. */
+/* On desktop the chat runs from the top of the screen down to the Play button: `contain: size` keeps its
+   messages from stretching the row, so the stage alone sets the height and the log scrolls inside. */
 @media (min-width: 901px) {
-  .view.room {
-    container-type: inline-size;
-  }
-
-  .side {
-    align-self: start;
-    height: calc((100cqw - 344px) * 9 / 16);
-  }
-
-  .side .chat {
-    flex: 1;
-    min-height: 0;
+  .view.room .chat {
+    contain: size;
     display: flex;
     flex-direction: column;
   }
 
-  .side .chat-log {
+  .view.room .chat-log {
     flex: 1;
     min-height: 0;
     max-height: none;
+  }
+
+  .view.room .chat-form {
+    margin-top: auto;
   }
 }
 

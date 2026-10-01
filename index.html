@@ -58,6 +58,15 @@
       </section>
 
       <section id="view-room" class="view room" hidden>
+        <aside class="card room-people">
+          <h3>
+            In the room
+            <button id="copy-invite" class="icon-btn" title="Copy room link" aria-label="Copy room link">🔗</button>
+            <span class="count" id="people-count"></span>
+          </h3>
+          <ul id="people" class="people"></ul>
+        </aside>
+
         <div class="stage">
           <div class="screen">
             <div id="player"></div>
@@ -75,25 +84,14 @@
           <p class="error" id="room-error" hidden></p>
         </div>
 
-        <aside class="side">
-          <div class="card">
-            <h3>
-              In the room
-              <button id="copy-invite" class="icon-btn" title="Copy room link" aria-label="Copy room link">🔗</button>
-              <span class="count" id="people-count"></span>
-            </h3>
-            <ul id="people" class="people"></ul>
-          </div>
-
-          <div class="card chat">
-            <h3>Chat</h3>
-            <p class="hint" id="chat-empty">What should we play next? 🎧</p>
-            <ul id="chat-log" class="chat-log"></ul>
-            <form id="chat-form" class="chat-form">
-              <input id="chat-input" type="text" placeholder="Say something…" maxlength="300" autocomplete="off" />
-              <button class="btn">Send</button>
-            </form>
-          </div>
+        <aside class="card chat">
+          <h3>Chat</h3>
+          <p class="hint" id="chat-empty">What should we play next? 🎧</p>
+          <ul id="chat-log" class="chat-log"></ul>
+          <form id="chat-form" class="chat-form">
+            <input id="chat-input" type="text" placeholder="Say something…" maxlength="300" autocomplete="off" />
+            <button class="btn">Send</button>
+          </form>
         </aside>
       </section>
 
