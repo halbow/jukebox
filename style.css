@@ -437,6 +437,20 @@ input:focus {
   margin: 0 0 12px;
 }
 
+.chat-log small {
+  margin-left: 0.4em;
+  color: var(--muted);
+}
+
+.chat .chat-editing {
+  margin: 0 0 6px;
+  color: var(--amber);
+}
+
+.chat-form.editing input {
+  border-color: var(--amber);
+}
+
 .chat-form {
   position: relative;
   display: flex;

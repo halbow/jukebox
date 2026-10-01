@@ -1,4 +1,4 @@
-import { HISTORY_SIZE, MAX_CHAT_LENGTH, chatKey, createChat, isChat, senderColor } from './chat.js'
+import { HISTORY_SIZE, MAX_CHAT_LENGTH, chatKey, createChat, editChat, isChat, isNewerEdit, senderColor } from './chat.js'
 import { completedShortcodeAt, replaceShortcodes, shortcodeAt, suggest } from './emoji.js'
 import { createPassphrase, parsePassphrase } from './passphrase.js'
 import { joinJukebox, randomId } from './room.js'
@@ -158,10 +158,18 @@ function save() {
 // ---------- chat ----------
 
 let chatLog = [] // sorted by sentAt; replayed to everyone who joins after us
+let editing = null // the message of yours being edited, picked with ↑ in an empty input
 
 function receiveChat(msg) {
   const key = chatKey(msg)
-  if (chatLog.some((m) => chatKey(m) === key)) return // history replays overlap
+  const i = chatLog.findIndex((m) => chatKey(m) === key)
+  if (i >= 0) {
+    // History replays overlap; only a newer edit gets through, and it only changes the text.
+    if (!isNewerEdit(msg, chatLog[i])) return
+    chatLog[i] = { ...chatLog[i], text: msg.text, editedAt: msg.editedAt }
+    renderChat()
+    return save()
+  }
   chatLog.push(msg)
   chatLog.sort((a, b) => a.sentAt - b.sentAt)
   if (chatLog.length > HISTORY_SIZE) chatLog = chatLog.slice(-HISTORY_SIZE)
@@ -179,6 +187,7 @@ function renderChat() {
       const sender = Object.assign(document.createElement('b'), { textContent: mine ? 'You' : msg.name })
       if (!mine) sender.style.color = senderColor(msg.from)
       li.append(sender, msg.text)
+      if (msg.editedAt) li.append(Object.assign(document.createElement('small'), { textContent: '(edited)' }))
       return li
     }),
   )
@@ -190,12 +199,42 @@ $('chat-form').addEventListener('submit', (e) => {
   e.preventDefault()
   const input = $('chat-input')
   const text = replaceShortcodes(input.value.trim()).slice(0, MAX_CHAT_LENGTH)
-  if (!text) return
+  if (!text && !editing) return
   input.value = ''
   closeEmoji()
-  const msg = createChat(text, { name: session.name, from: session.peerId })
+  const edited = editing
+  stopEditing()
+  if (edited && (!text || text === edited.text)) return // emptied or unchanged: nothing to edit
+  const msg = edited ? editChat(edited, text) : createChat(text, { name: session.name, from: session.peerId })
   receiveChat(msg)
   actions?.chat.send(msg)
+})
+
+function startEditing() {
+  editing = chatLog.findLast((m) => m.from === session.peerId)
+  if (!editing) return
+  const input = $('chat-input')
+  input.value = editing.text
+  input.setSelectionRange(input.value.length, input.value.length)
+  $('chat-form').classList.add('editing')
+  $('chat-editing').hidden = false
+}
+
+function stopEditing() {
+  editing = null
+  $('chat-form').classList.remove('editing')
+  $('chat-editing').hidden = true
+}
+
+$('chat-input').addEventListener('keydown', (e) => {
+  if (emojiOpen || e.isComposing) return // the emoji list has the arrows and Escape
+  if (e.key === 'ArrowUp' && !e.target.value) {
+    e.preventDefault()
+    startEditing()
+  } else if (e.key === 'Escape' && editing) {
+    e.target.value = ''
+    stopEditing()
+  }
 })
 
 // ---------- emoji ----------
