@@ -25,7 +25,7 @@ No signaling server of our own. Peers find each other through public Nostr relay
 ```
 CREATOR                                 FRIEND
 1. "Create room" → passphrase
-2. Shares  #room=<passphrase>       ───▶ 3. Opens link (or pastes the passphrase), picks a name
+2. Shares  #room=<passphrase>       ───▶ 3. Opens link, picks a name
 4. ✅ Trystero exchanges the handshake over the relays, P2P data channels open
 ```
 
@@ -70,9 +70,8 @@ type State = {
 ## UI (v1)
 
 - Home: "Create room" button.
-- Home: "Create room", and a field to join by pasting a passphrase.
 - Name prompt as a modal over the room, so you see it while typing (remembered locally). Peers announce names to each other on connect.
-- Invite card: room link plus copy button, and the passphrase. People list with count.
+- Invite card: room link plus copy button. People list with count.
 - Room: YouTube player, URL input to change video, connection status.
 - Room chat: short text messages to agree on the next video. Late joiners get the last 50 messages from everyone, deduplicated.
 - A "Join / click to start" button to satisfy the browser autoplay policy.

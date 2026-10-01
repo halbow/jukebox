@@ -226,13 +226,6 @@ $('create-room').addEventListener('click', () => {
   goToRoom(createPassphrase())
 })
 
-$('passphrase-form').addEventListener('submit', (e) => {
-  e.preventDefault()
-  const phrase = parsePassphrase($('passphrase-input').value)
-  if (phrase) goToRoom(phrase)
-  else showError('home-error', "That's not a jukebox passphrase. Paste the 8 words exactly as you got them.")
-})
-
 // ---------- room ----------
 
 async function openRoom(phrase) {

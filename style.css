@@ -232,10 +232,6 @@ input:focus {
   gap: 8px;
 }
 
-.join-row {
-  margin-top: 22px;
-}
-
 .hint {
   color: var(--muted);
   font-size: 0.9rem;

@@ -11,7 +11,7 @@ npx serve .        # or: python3 -m http.server
 Open the printed URL (it must be http(s), not `file://`).
 
 1. **Create a room** and send the link to your friends.
-2. They open it, or paste the passphrase on the home page, pick a name, and they're in.
+2. They open it, pick a name, and they're in.
 3. Refreshing rejoins the room and picks up where the video was.
 
 ## Code
