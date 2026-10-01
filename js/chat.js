@@ -3,7 +3,11 @@
 // Editing resends the whole message with the same `from` and `sentAt` (so the same `chatKey`) and a later
 // `editedAt`: the newest version wins, and history replays carry it to late joiners.
 //
-// type Chat = { type: 'chat', text, name, sentAt, from, editedAt? }
+// A `/giphy` message carries a `gif` (see giphy.js) and its search as `text`, shown as the caption.
+//
+// type Chat = { type: 'chat', text, name, sentAt, from, editedAt?, gif? }
+
+import { isGif } from './giphy.js'
 
 export const MAX_CHAT_LENGTH = 300
 export const HISTORY_SIZE = 50 // what peers replay to someone who joins late
@@ -17,12 +21,13 @@ export function isChat(msg) {
     typeof msg.name === 'string' &&
     Number.isFinite(msg.sentAt) &&
     typeof msg.from === 'string' &&
-    (msg.editedAt === undefined || Number.isFinite(msg.editedAt))
+    (msg.editedAt === undefined || Number.isFinite(msg.editedAt)) &&
+    (msg.gif === undefined || isGif(msg.gif))
   )
 }
 
-export function createChat(text, { name, from }) {
-  return { type: 'chat', text, name, sentAt: Date.now(), from }
+export function createChat(text, { name, from, gif }) {
+  return { type: 'chat', text, name, sentAt: Date.now(), from, ...(gif && { gif }) }
 }
 
 export function editChat(msg, text) {

@@ -33,6 +33,7 @@ CREATOR                                 FRIEND
 - It's both the Trystero room id and its `password`, so relays only see an encrypted handshake.
   Anyone who has the passphrase can join.
 - Only the handshake touches the relays. Sync and chat travel peer to peer.
+- GIFs are the exception for media: every peer's browser loads them from Giphy, so Giphy sees their IP.
 - ICE servers: Trystero's default public STUN. TURN is still out of scope.
 
 ### Topology: mesh
@@ -76,6 +77,7 @@ type State = {
 - Room chat: short text messages to agree on the next video. Late joiners get the last 50 messages from everyone, deduplicated.
 - Chat emoji, Slack style: typing `:` lists matching shortcodes (arrows + Enter or Tab to pick, Escape to close), and a fully typed `:joy:` turns into 😂, `:D` turns into 😃, and `:p` into 😛. Shortcodes come from GitHub's [gemoji](https://github.com/wooorm/gemoji), loaded from the CDN and pinned by hash.
 - Edit your last message: ↑ in an empty chat input loads it back (Escape cancels). The edit is resent with the same `from` and `sentAt` plus an `editedAt`; the newest edit wins, shows as "(edited)", and is what late joiners get.
+- `/giphy <search>`, Slack style: a preview only you see, with Send / Shuffle / Cancel (Escape), from 25 results (`rating=pg-13`). Searching needs your own Giphy API key, asked the first time and kept in `localStorage` (`/giphy key` changes or removes it); it never goes to peers, and seeing GIFs needs no key. A GIF message is `{ ...chat, text: <search>, gif: { id, width, height } }`: peers get the Giphy id and build the image URL themselves, never a URL from a peer. GIFs can't be edited, show their still frame under `prefers-reduced-motion`, and "GIF unavailable" once Giphy drops them.
 - Chat mode toggle: the chat takes the room and the video shrinks to a corner, without reloading the player. Remembered locally.
 - Pause for me: stops your player without broadcasting. While paused, room `State`s are still received but not applied; "Rejoin the room" (an overlay over the player, so YouTube's own controls can't broadcast a play) applies the latest one at its live position. Picking a video also rejoins. Peers see a ⏸ on your name (a `pausedLocally` flag in `hello`, resent on change). Not kept across a refresh.
 - A "Join / click to start" button to satisfy the browser autoplay policy.

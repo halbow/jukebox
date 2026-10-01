@@ -532,6 +532,69 @@ input:focus {
   color: var(--text);
 }
 
+/* ---------- /giphy ---------- */
+
+/* Fixed height, width from the aspect ratio (`width`/`height` attributes), so the log doesn't jump on load. */
+.gif {
+  display: block;
+  margin-top: 4px;
+}
+
+.gif img {
+  display: block;
+  height: 160px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.chat-mode .gif img {
+  height: 200px;
+}
+
+.chat-log .gif + small {
+  display: block;
+  margin: 2px 0 0;
+}
+
+/* Only you see it, between the log and the input. */
+.giphy-preview {
+  margin: 0 0 12px;
+  padding: 10px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+}
+
+.chat .giphy-preview .hint,
+.giphy-preview .error {
+  margin: 0 0 8px;
+}
+
+.giphy-preview .hint a {
+  color: var(--amber);
+}
+
+.giphy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.giphy-actions input {
+  flex: 1;
+  min-width: 0;
+}
+
+.giphy-actions .powered {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.75em;
+  letter-spacing: 0.05em;
+}
+
 /* ---------- vinyl ---------- */
 
 .vinyl {

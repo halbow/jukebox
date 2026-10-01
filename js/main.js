@@ -1,5 +1,6 @@
 import { HISTORY_SIZE, MAX_CHAT_LENGTH, chatKey, createChat, editChat, isChat, isNewerEdit, senderColor } from './chat.js'
 import { completedShortcodeAt, replaceShortcodes, shortcodeAt, suggest } from './emoji.js'
+import { KEY_HELP_URL, checkKey, gifStillUrl, gifUrl, loadKey, parseGiphyCommand, saveKey, searchGifs } from './giphy.js'
 import { createPassphrase, parsePassphrase } from './passphrase.js'
 import { joinJukebox, randomId } from './room.js'
 import { Sync, isNewer, isState } from './sync.js'
@@ -189,6 +190,7 @@ function renderChat() {
       if (!mine) sender.style.color = senderColor(msg.from)
       li.append(sender, msg.text)
       if (msg.editedAt) li.append(Object.assign(document.createElement('small'), { textContent: '(edited)' }))
+      if (msg.gif) li.append(gifElement(msg.gif, msg.text), Object.assign(document.createElement('small'), { textContent: 'via /giphy' }))
       return li
     }),
   )
@@ -199,6 +201,14 @@ function renderChat() {
 $('chat-form').addEventListener('submit', (e) => {
   e.preventDefault()
   const input = $('chat-input')
+  const command = !editing && parseGiphyCommand(input.value)
+  if (command) {
+    input.value = ''
+    closeEmoji()
+    if (command.key) return askGiphyKey()
+    if (!command.query) return showGiphy({ error: "Say what you're looking for, e.g. /giphy dancing cat" })
+    return searchGiphy(command.query)
+  }
   const text = replaceShortcodes(input.value.trim()).slice(0, MAX_CHAT_LENGTH)
   if (!text && !editing) return
   input.value = ''
@@ -212,7 +222,7 @@ $('chat-form').addEventListener('submit', (e) => {
 })
 
 function startEditing() {
-  editing = chatLog.findLast((m) => m.from === session.peerId)
+  editing = chatLog.findLast((m) => m.from === session.peerId && !m.gif) // a GIF can't be edited
   if (!editing) return
   const input = $('chat-input')
   input.value = editing.text
@@ -235,8 +245,156 @@ $('chat-input').addEventListener('keydown', (e) => {
   } else if (e.key === 'Escape' && editing) {
     e.target.value = ''
     stopEditing()
+  } else if (e.key === 'Escape' && giphy) {
+    closeGiphy()
   }
 })
+
+// ---------- /giphy ----------
+
+// The private preview, only you see it: { query?, results?, index?, loading?, error?, askKey? }, or null.
+// Never in `chatLog`, never saved, never sent.
+let giphy = null
+let giphyRun = 0 // bumped by every search, key check or close, so a late answer can't reopen the preview
+
+/** A GIF for the chat log or the preview: the still frame for reduced motion, a placeholder once it's gone. */
+function gifElement({ id, width, height }, alt) {
+  const picture = Object.assign(document.createElement('picture'), { className: 'gif' })
+  const still = Object.assign(document.createElement('source'), { srcset: gifStillUrl(id), media: '(prefers-reduced-motion: reduce)' })
+  const img = Object.assign(document.createElement('img'), { src: gifUrl(id), width, height, alt, loading: 'lazy' })
+  img.addEventListener('error', () => picture.replaceChildren(Object.assign(document.createElement('small'), { textContent: 'GIF unavailable' })))
+  picture.append(still, img)
+  return picture
+}
+
+function button(label, onClick, className = 'btn small') {
+  const el = Object.assign(document.createElement('button'), { type: 'button', className, textContent: label })
+  el.addEventListener('click', onClick)
+  return el
+}
+
+function showGiphy(preview) {
+  giphy = preview
+  renderGiphy()
+}
+
+function closeGiphy() {
+  giphyRun++
+  giphy = null
+  renderGiphy()
+}
+
+function renderGiphy() {
+  const box = $('giphy-preview')
+  box.hidden = !giphy
+  if (!giphy) return box.replaceChildren()
+  const { query, results, index, loading, error, askKey } = giphy
+  const hint = (text) => Object.assign(document.createElement('p'), { className: 'hint', textContent: text })
+  const cancel = button('Cancel', closeGiphy)
+
+  if (askKey) return box.replaceChildren(...keyForm(), ...(error ? [errorLine(error)] : []))
+  if (loading) return box.replaceChildren(hint(query ? `Searching Giphy for “${query}”…` : 'Checking your key…'))
+  if (error) return box.replaceChildren(errorLine(error), actionsRow(cancel))
+  if (!results.length) return box.replaceChildren(hint(`No GIFs for “${query}”.`), actionsRow(cancel))
+  box.replaceChildren(
+    hint(`Only you can see this · “${query}”`),
+    gifElement(results[index], query),
+    actionsRow(
+      button('Send', sendGiphy, 'btn small primary'),
+      ...(results.length > 1 ? [button('Shuffle', shuffleGiphy)] : []),
+      cancel,
+      Object.assign(document.createElement('small'), { className: 'powered', textContent: 'Powered by GIPHY' }),
+    ),
+  )
+}
+
+function actionsRow(...children) {
+  const row = Object.assign(document.createElement('div'), { className: 'giphy-actions' })
+  row.append(...children)
+  return row
+}
+
+function errorLine(text) {
+  return Object.assign(document.createElement('p'), { className: 'error', textContent: text })
+}
+
+function keyForm() {
+  const intro = Object.assign(document.createElement('p'), { className: 'hint' })
+  const link = Object.assign(document.createElement('a'), { href: KEY_HELP_URL, target: '_blank', rel: 'noopener', textContent: 'Get a free one' })
+  intro.append('/giphy needs your own Giphy API key, it stays in this browser. ', link, ' (Create an App → API).')
+  const form = Object.assign(document.createElement('form'), { className: 'giphy-actions' })
+  const input = Object.assign(document.createElement('input'), { type: 'text', placeholder: 'Giphy API key', value: loadKey(), autocomplete: 'off', spellcheck: false })
+  input.addEventListener('keydown', (e) => e.key === 'Escape' && closeGiphy())
+  form.append(input, Object.assign(document.createElement('button'), { className: 'btn small primary', textContent: 'Save' }))
+  if (loadKey()) {
+    form.append(
+      button('Remove', () => {
+        saveKey('')
+        closeGiphy()
+      }),
+    )
+  }
+  form.append(button('Cancel', closeGiphy))
+  form.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const key = input.value.trim()
+    if (key) saveGiphyKey(key)
+  })
+  queueMicrotask(() => input.focus())
+  return [intro, form]
+}
+
+/** `/giphy key`, or a search without a (working) key: `query` runs once the key is saved. */
+function askGiphyKey({ query, error } = {}) {
+  giphyRun++
+  showGiphy({ askKey: true, query, error })
+}
+
+async function saveGiphyKey(key) {
+  const run = ++giphyRun
+  const { query } = giphy
+  showGiphy({ loading: true })
+  try {
+    await checkKey(key)
+  } catch (err) {
+    if (run === giphyRun) askGiphyKey({ query, error: err.message })
+    return
+  }
+  if (run !== giphyRun) return
+  saveKey(key)
+  if (query) searchGiphy(query)
+  else closeGiphy()
+}
+
+async function searchGiphy(query) {
+  const key = loadKey()
+  if (!key) return askGiphyKey({ query })
+  const run = ++giphyRun
+  showGiphy({ query, loading: true })
+  try {
+    const results = await searchGifs(key, query)
+    if (run === giphyRun) showGiphy({ query, results, index: 0 })
+  } catch (err) {
+    if (run !== giphyRun) return
+    if (err.badKey) askGiphyKey({ query, error: err.message })
+    else showGiphy({ query, error: err.message })
+  }
+}
+
+function shuffleGiphy() {
+  const { results, index } = giphy
+  const next = (index + 1 + Math.floor(Math.random() * (results.length - 1))) % results.length // never the same one
+  showGiphy({ ...giphy, index: next })
+}
+
+function sendGiphy() {
+  const { query, results, index } = giphy
+  closeGiphy()
+  const msg = createChat(query.slice(0, MAX_CHAT_LENGTH), { name: session.name, from: session.peerId, gif: results[index] })
+  receiveChat(msg)
+  actions?.chat.send(msg)
+  $('chat-input').focus()
+}
 
 // ---------- emoji ----------
 
