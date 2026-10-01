@@ -1,6 +1,6 @@
 ---
 version: 1.0.0
-name: Tickets
+name: Jukebox
 columns: [todo, in-progress, in-qa, done]
 ---
 

@@ -8,6 +8,7 @@ import { PLAYER_STATE, createPlayer, parseVideoId } from './youtube.js'
 const MAX_PEOPLE = 12 // you included. Soft cap: in a mesh every extra person costs everyone a connection.
 const MAX_NAME_LENGTH = 24
 const NAME_KEY = 'jukebox:name'
+const LAYOUT_KEY = 'jukebox:layout' // 'chat' when the chat is in focus, the video otherwise
 
 const $ = (id) => document.getElementById(id)
 const views = { home: $('view-home'), room: $('view-room'), ended: $('view-ended') }
@@ -396,6 +397,20 @@ function askName() {
     })
   })
 }
+
+// ---------- layout ----------
+
+function setChatMode(on) {
+  views.room.classList.toggle('chat-mode', on)
+  const button = $('toggle-layout')
+  button.textContent = on ? '📺' : '💬'
+  button.title = button.ariaLabel = on ? 'Focus on the video' : 'Focus on the chat'
+  button.ariaPressed = String(on)
+  localStorage.setItem(LAYOUT_KEY, on ? 'chat' : 'video')
+}
+
+$('toggle-layout').addEventListener('click', () => setChatMode(!views.room.classList.contains('chat-mode')))
+setChatMode(localStorage.getItem(LAYOUT_KEY) === 'chat')
 
 $('copy-invite').addEventListener('click', (e) => copy(`${location.origin}${location.pathname}#room=${passphrase}`, e.currentTarget))
 

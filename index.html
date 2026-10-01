@@ -60,15 +60,6 @@
       </section>
 
       <section id="view-room" class="view room" hidden>
-        <aside class="card room-people">
-          <h3>
-            In the room
-            <button id="copy-invite" class="icon-btn" title="Copy room link" aria-label="Copy room link">🔗</button>
-            <span class="count" id="people-count"></span>
-          </h3>
-          <ul id="people" class="people"></ul>
-        </aside>
-
         <div class="stage">
           <div class="screen">
             <div id="player"></div>
@@ -87,7 +78,18 @@
         </div>
 
         <aside class="card chat">
-          <h3>Chat</h3>
+          <div class="room-people">
+            <h3>
+              In the room
+              <button id="copy-invite" class="icon-btn" title="Copy room link" aria-label="Copy room link">🔗</button>
+              <span class="count" id="people-count"></span>
+            </h3>
+            <ul id="people" class="people"></ul>
+          </div>
+          <h3>
+            Chat
+            <button id="toggle-layout" class="icon-btn layout-toggle" aria-pressed="false"></button>
+          </h3>
           <p class="hint" id="chat-empty">What should we play next? 🎧</p>
           <ul id="chat-log" class="chat-log"></ul>
           <form id="chat-form" class="chat-form">

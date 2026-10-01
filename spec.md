@@ -71,10 +71,11 @@ type State = {
 
 - Home: "Create room" button.
 - Name prompt as a modal over the room, so you see it while typing (remembered locally). Peers announce names to each other on connect.
-- Invite card: room link plus copy button. People list with count.
+- People list with count and a copy-link button, at the top of the chat card.
 - Room: YouTube player, URL input to change video, connection status.
 - Room chat: short text messages to agree on the next video. Late joiners get the last 50 messages from everyone, deduplicated.
 - Chat emoji, Slack style: typing `:` lists matching shortcodes (arrows + Enter or Tab to pick, Escape to close), and a fully typed `:joy:` turns into 😂, `:D` turns into 😃, and `:p` into 😛. Shortcodes come from GitHub's [gemoji](https://github.com/wooorm/gemoji), loaded from the CDN and pinned by hash.
+- Chat mode toggle: the chat takes the room and the video shrinks to a corner, without reloading the player. Remembered locally.
 - A "Join / click to start" button to satisfy the browser autoplay policy.
 - Cosy vibe: warm dark theme, jukebox feel.
 
