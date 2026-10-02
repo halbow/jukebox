@@ -503,6 +503,49 @@ input:focus {
   color: var(--muted);
 }
 
+/* ---------- settings ---------- */
+
+.settings h2 {
+  margin-top: 0;
+}
+
+.setting {
+  margin: 0 0 20px;
+}
+
+.setting > label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.setting .name-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.setting .hint {
+  margin-top: 6px;
+}
+
+.switch {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.switch input {
+  accent-color: var(--amber);
+  width: 18px;
+  height: 18px;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 /* "Not listening right now": a small ⏸ after the name, text style so it stays muted. */
 .people li.paused::after {
   content: '⏸\FE0E';
@@ -688,7 +731,8 @@ input:focus {
   margin: 0 0 8px;
 }
 
-.giphy-preview .hint a {
+.giphy-preview .hint a,
+.setting .hint a {
   color: var(--amber);
 }
 

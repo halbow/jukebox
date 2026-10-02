@@ -97,13 +97,13 @@
               In the room
               <button id="copy-invite" class="icon-btn" title="Copy room link" aria-label="Copy room link">🔗</button>
               <span class="count" id="people-count"></span>
+              <button id="open-settings" class="icon-btn" title="Settings" aria-label="Settings">⚙️</button>
             </h3>
             <ul id="people" class="people"></ul>
           </div>
           <h3>
             Chat
             <button id="toggle-layout" class="icon-btn layout-toggle" aria-pressed="false"></button>
-            <button id="toggle-sound" class="icon-btn" aria-pressed="true"></button>
           </h3>
           <p class="hint chat-empty" id="chat-empty">What should we play next? 🎧</p>
           <ul id="chat-log" class="chat-log"></ul>
@@ -139,6 +139,33 @@
             <button class="btn primary">Join</button>
           </div>
         </form>
+      </div>
+    </div>
+    <div id="settings-modal" class="modal" hidden>
+      <div class="card settings">
+        <h2>Settings</h2>
+        <form id="settings-name" class="setting">
+          <label for="settings-name-input">Your name</label>
+          <div class="name-row">
+            <input id="settings-name-input" type="text" maxlength="24" autocomplete="nickname" required />
+            <button class="btn small">Save</button>
+          </div>
+        </form>
+        <div class="setting">
+          <label class="switch"><input id="settings-sound" type="checkbox" /> Play a sound on new messages</label>
+          <p class="hint">The tab's icon gets a dot either way, while you're away.</p>
+        </div>
+        <form id="settings-giphy" class="setting">
+          <label for="settings-giphy-input">Giphy API key</label>
+          <div class="name-row">
+            <input id="settings-giphy-input" type="text" placeholder="For /giphy" autocomplete="off" spellcheck="false" />
+            <button class="btn small">Save</button>
+            <button type="button" id="settings-giphy-remove" class="btn small">Remove</button>
+          </div>
+          <p class="hint">Stays in this browser. <a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener">Get a free one</a> (Create an App → API).</p>
+        </form>
+        <p class="error" id="settings-error" hidden></p>
+        <div class="settings-actions"><button type="button" id="close-settings" class="btn primary">Done</button></div>
       </div>
     </div>
   </body>

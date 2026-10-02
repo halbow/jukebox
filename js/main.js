@@ -65,6 +65,11 @@ async function copy(text, button) {
     document.execCommand('copy')
     area.remove()
   }
+  flash(button)
+}
+
+/** A ✓ on the button for a moment. */
+function flash(button) {
   const label = button.textContent
   button.textContent = '✓'
   setTimeout(() => (button.textContent = label), 1500)
@@ -822,6 +827,60 @@ function askName() {
   })
 }
 
+// ---------- settings ----------
+
+function openSettings() {
+  $('settings-name-input').value = session.name
+  $('settings-sound').checked = soundOn()
+  $('settings-giphy-input').value = loadKey()
+  $('settings-giphy-remove').hidden = !loadKey()
+  showError('settings-error', '')
+  $('settings-modal').hidden = false
+}
+
+function closeSettings() {
+  $('settings-modal').hidden = true
+}
+
+$('open-settings').addEventListener('click', openSettings)
+$('close-settings').addEventListener('click', closeSettings)
+$('settings-modal').addEventListener('click', (e) => e.target === e.currentTarget && closeSettings())
+$('settings-modal').addEventListener('keydown', (e) => e.key === 'Escape' && closeSettings())
+
+$('settings-name').addEventListener('submit', (e) => {
+  e.preventDefault()
+  const name = cleanName($('settings-name-input').value)
+  if (!name) return
+  session.name = name
+  localStorage.setItem(NAME_KEY, name)
+  save()
+  actions?.hello.send(hello()) // the others' people lists pick it up; past messages keep the old name
+  flash(e.submitter)
+})
+
+$('settings-sound').addEventListener('change', (e) => setSound(e.target.checked))
+
+$('settings-giphy').addEventListener('submit', async (e) => {
+  e.preventDefault()
+  const key = $('settings-giphy-input').value.trim()
+  if (!key) return
+  showError('settings-error', '')
+  try {
+    await checkKey(key)
+  } catch (err) {
+    return showError('settings-error', err.message)
+  }
+  saveKey(key)
+  $('settings-giphy-remove').hidden = false
+  flash(e.submitter)
+})
+
+$('settings-giphy-remove').addEventListener('click', () => {
+  saveKey('')
+  $('settings-giphy-input').value = ''
+  $('settings-giphy-remove').hidden = true
+})
+
 // ---------- layout ----------
 
 function setChatMode(on) {
@@ -835,20 +894,6 @@ function setChatMode(on) {
 
 $('toggle-layout').addEventListener('click', () => setChatMode(!views.room.classList.contains('chat-mode')))
 setChatMode(localStorage.getItem(LAYOUT_KEY) === 'chat')
-
-function renderSound() {
-  const on = soundOn()
-  const button = $('toggle-sound')
-  button.textContent = on ? '🔔' : '🔕'
-  button.title = button.ariaLabel = on ? 'Mute the new message sound' : 'Play a sound on new messages'
-  button.ariaPressed = String(on)
-}
-
-$('toggle-sound').addEventListener('click', () => {
-  setSound(!soundOn())
-  renderSound()
-})
-renderSound()
 
 $('copy-invite').addEventListener('click', (e) => copy(`${location.origin}${location.pathname}#room=${passphrase}`, e.currentTarget))
 
