@@ -188,6 +188,8 @@ let chatLog = [] // sorted by sentAt; replayed to whoever joins after us, if the
 let editing = null // the message of yours being edited, picked with ↑ in an empty input
 let notices = [] // "<name> joined / left": only seen here, never replayed nor saved: [{ notice: true, text, sentAt }]
 const leftWhileHere = new Set() // session peer ids of people who left since we came, so their comeback shows
+const unreachable = new Set() // Trystero peer ids whose connection failed and who haven't connected since
+const UNREACHABLE = "Couldn't connect to someone in the room. One of you may be on a strict network (mobile data, office Wi-Fi)."
 
 function addNotice(text) {
   notices.push({ notice: true, text, sentAt: Date.now() })
@@ -704,9 +706,12 @@ async function openRoom(phrase) {
 async function connect() {
   try {
     room = await joinJukebox(passphrase, {
-      onJoinError: ({ error }) => {
+      onJoinError: ({ error, peerId: id }) => {
         console.warn('jukebox: join error', error)
-        showError('room-error', "Couldn't connect to someone in the room. One of you may be on a strict network (mobile data, office Wi-Fi).")
+        // Trystero keeps retrying: a failed attempt doesn't matter if another one got through.
+        if (room && id in room.getPeers()) return
+        unreachable.add(id)
+        showError('room-error', UNREACHABLE)
       },
     })
   } catch (err) {
@@ -723,6 +728,8 @@ async function connect() {
   connectedAt = Date.now()
 
   room.onPeerJoin = (id) => {
+    unreachable.delete(id)
+    if (!unreachable.size && $('room-error').textContent === UNREACHABLE) showError('room-error', '')
     const target = { target: id }
     actions.hello.send(hello(), target)
     if (sync.state) actions.state.send(sync.state, target)
