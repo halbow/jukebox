@@ -6,7 +6,6 @@
 const SOUND_KEY = 'jukebox:sound' // 'off' when the ding is muted
 
 const ICON = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📻</text></svg>`
-const BADGE = `<circle cx='80' cy='20' r='17' fill='#e2725b' stroke='#16100d' stroke-width='6'/>` // terracotta, ringed with the bg
 
 let unread = false
 let audio = null
@@ -33,8 +32,15 @@ export function notify() {
 function setUnread(on) {
   if (unread === on) return
   unread = on
-  const svg = on ? ICON.replace('</svg>', `${BADGE}</svg>`) : ICON
+  const svg = on ? ICON.replace('</svg>', `${badge()}</svg>`) : ICON
   document.querySelector('link[rel=icon]').href = `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+
+// The theme's second accent, ringed with its background.
+function badge() {
+  const style = getComputedStyle(document.documentElement)
+  const color = (name) => style.getPropertyValue(name).trim()
+  return `<circle cx='80' cy='20' r='17' fill='${color('--accent-2')}' stroke='${color('--bg')}' stroke-width='6'/>`
 }
 
 function ding() {

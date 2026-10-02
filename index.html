@@ -6,6 +6,9 @@
     <title>jukebox</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📻</text></svg>" />
     <link rel="stylesheet" href="style.css" />
+    <!-- One file per theme, see themes/README.md. -->
+    <link rel="stylesheet" href="themes/cosy.css" />
+    <link rel="stylesheet" href="themes/cyberpunk.css" />
     <!-- Trystero and gemoji from the CDN, every file pinned by hash: if the CDN serves anything else, the browser refuses to run it.
          Static npm files only (jsDelivr's +esm bundles are regenerated, so their hashes drift). -->
     <script type="importmap">
@@ -153,6 +156,11 @@
             <button class="btn small">Save</button>
           </div>
         </form>
+        <div class="setting">
+          <label for="settings-theme">Room theme</label>
+          <select id="settings-theme"></select>
+          <p class="hint">Changes it for everyone in the room.</p>
+        </div>
         <div class="setting">
           <label class="switch"><input id="settings-sound" type="checkbox" /> Play a sound on new messages</label>
           <p class="hint">The tab's icon gets a dot either way, while you're away.</p>

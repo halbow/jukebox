@@ -18,7 +18,7 @@ Open the printed URL (it must be http(s), not `file://`).
 6. The 💬 button in the chat switches to chat mode (chat in the middle, video in the corner); 📺 switches back.
 7. **⏸ Pause for me** stops the music for you only; **Rejoin the room** jumps back to where the others are. They see a ⏸ next to your name meanwhile.
 8. New messages put a dot on the tab's icon and play a ding while you're away.
-9. ⚙️ in the top bar opens the settings: your name, the message sound, your Giphy key.
+9. ⚙️ in the top bar opens the settings: your name, the room's theme (for everyone), the message sound, your Giphy key.
 
 ## Code
 
@@ -29,5 +29,7 @@ Open the printed URL (it must be http(s), not `file://`).
 - `js/chat.js`: chat message shape, validation, dedup key and edits
 - `js/giphy.js`: `/giphy` command, Giphy search with your own key, GIF validation and URLs
 - `js/notify.js`: new message notifications: favicon dot and ding, with the mute setting
+- `js/theme.js`: the room's theme: the list of themes, validation, applying it
+- `themes/`: one stylesheet per theme, setting the tokens `style.css` uses (see `themes/README.md`)
 - `js/emoji.js`: `:shortcode:` lookup and suggestions for the chat (gemoji)
 - `js/main.js`: UI, mesh sync (last `sentAt` wins), names, chat, `sessionStorage` persistence

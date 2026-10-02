@@ -1,16 +1,4 @@
-:root {
-  --bg: #16100d;
-  --card: rgba(43, 31, 25, 0.78);
-  --line: #3e2e25;
-  --text: #f4e7d4;
-  --muted: #b9a38d;
-  --amber: #f4a259;
-  --terracotta: #e2725b;
-  --ok: #a3c47a;
-  --err: #f08b78;
-  --radius: 18px;
-  color-scheme: dark;
-}
+/* The colors, font and backdrop come from the theme, see themes/. Only theme-neutral values live here. */
 
 * {
   box-sizing: border-box;
@@ -23,12 +11,10 @@
 body {
   margin: 0;
   min-height: 100vh;
-  font: 16px/1.5 ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font: 16px/1.5 var(--font);
   color: var(--text);
-  background:
-    radial-gradient(1200px 600px at 15% -10%, rgba(244, 162, 89, 0.16), transparent 60%),
-    radial-gradient(900px 500px at 110% 110%, rgba(226, 114, 91, 0.14), transparent 60%),
-    var(--bg);
+  background: var(--backdrop);
+  color-scheme: dark;
 }
 
 h1,
@@ -149,7 +135,7 @@ body:has(#view-room:not([hidden])) .topbar {
   border-radius: var(--radius);
   padding: 24px;
   backdrop-filter: blur(8px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--card-shadow);
 }
 
 .view.center .card,
@@ -165,7 +151,7 @@ body:has(#view-room:not([hidden])) .topbar {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(22, 16, 13, 0.6);
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
   backdrop-filter: blur(3px);
 }
 
@@ -243,13 +229,13 @@ body:has(#view-room:not([hidden])) .topbar {
 
 .btn.primary {
   border-color: transparent;
-  background: linear-gradient(135deg, var(--amber), var(--terracotta));
-  color: #2a140b;
-  box-shadow: 0 6px 24px rgba(244, 162, 89, 0.3);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: var(--on-accent);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .btn.primary:hover:not(:disabled) {
-  box-shadow: 0 8px 30px rgba(244, 162, 89, 0.45);
+  box-shadow: 0 8px 30px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 .btn.big {
@@ -264,7 +250,8 @@ body:has(#view-room:not([hidden])) .topbar {
 }
 
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   padding: 10px 14px;
   border: 1px solid var(--line);
@@ -277,8 +264,9 @@ textarea {
 }
 
 input:focus,
-textarea:focus {
-  border-color: var(--amber);
+textarea:focus,
+select:focus {
+  border-color: var(--accent);
 }
 
 .name-row {
@@ -313,7 +301,7 @@ textarea:focus {
   height: 8px;
   margin-right: 8px;
   border-radius: 50%;
-  background: var(--amber);
+  background: var(--accent);
 }
 
 .pill[data-tone='ok']::before {
@@ -329,10 +317,10 @@ textarea:focus {
   border-radius: 28px 28px var(--radius) var(--radius);
   overflow: hidden;
   background: #000;
-  border: 2px solid rgba(244, 162, 89, 0.35);
+  border: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
   box-shadow:
-    0 0 0 6px rgba(43, 31, 25, 0.9),
-    0 0 50px rgba(244, 162, 89, 0.18),
+    0 0 0 6px color-mix(in srgb, var(--surface) 90%, transparent),
+    0 0 50px color-mix(in srgb, var(--accent) 18%, transparent),
     0 30px 80px rgba(0, 0, 0, 0.5);
 }
 
@@ -352,7 +340,7 @@ textarea:focus {
   padding: 24px;
   text-align: center;
   color: var(--muted);
-  background: radial-gradient(circle at center, #2b1f19, #120c0a);
+  background: radial-gradient(circle at center, var(--surface), var(--surface-deep));
 }
 
 .overlay {
@@ -364,7 +352,7 @@ textarea:focus {
   justify-content: center;
   gap: 14px;
   border: 0;
-  background: rgba(22, 16, 13, 0.82);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(6px);
   font: inherit;
   cursor: pointer;
@@ -450,7 +438,7 @@ textarea:focus {
 
 .queue-play:hover img,
 .queue-play:focus-visible img {
-  border-color: var(--amber);
+  border-color: var(--accent);
 }
 
 /* The position in the queue, over the thumbnail's corner. */
@@ -461,8 +449,8 @@ textarea:focus {
   left: 6px;
   padding: 0 7px;
   border-radius: 999px;
-  background: rgba(22, 16, 13, 0.85);
-  color: var(--amber);
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  color: var(--accent);
   font-size: 0.8rem;
   font-weight: 600;
 }
@@ -479,7 +467,7 @@ textarea:focus {
   position: absolute;
   top: 4px;
   right: 4px;
-  background: rgba(22, 16, 13, 0.85);
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
   color: var(--text);
   font-size: 0.8rem;
 }
@@ -544,7 +532,7 @@ textarea:focus {
 }
 
 .switch input {
-  accent-color: var(--amber);
+  accent-color: var(--accent);
   width: 18px;
   height: 18px;
 }
@@ -582,7 +570,7 @@ textarea:focus {
 
 .count {
   margin-left: auto;
-  color: var(--amber);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -596,7 +584,7 @@ textarea:focus {
   overflow-y: auto;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
-  scrollbar-color: rgba(244, 231, 212, 0.2) transparent;
+  scrollbar-color: color-mix(in srgb, var(--text) 20%, transparent) transparent;
 }
 
 .chat-log:empty {
@@ -617,7 +605,7 @@ textarea:focus {
 
 .chat-log b {
   margin-right: 0.5em;
-  color: var(--amber);
+  color: var(--accent);
 }
 
 .chat-log li.mine b {
@@ -635,11 +623,11 @@ textarea:focus {
 
 .chat .chat-editing {
   margin: 0 0 6px;
-  color: var(--amber);
+  color: var(--accent);
 }
 
 .chat-form.editing textarea {
-  border-color: var(--amber);
+  border-color: var(--accent);
 }
 
 .chat .chat-command {
@@ -647,8 +635,8 @@ textarea:focus {
 }
 
 .chat-form.command textarea {
-  border-color: var(--amber);
-  color: var(--amber);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .chat-form {
@@ -665,7 +653,7 @@ textarea:focus {
   max-height: calc(5lh + 22px);
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(244, 231, 212, 0.2) transparent;
+  scrollbar-color: color-mix(in srgb, var(--text) 20%, transparent) transparent;
 }
 
 /* The `:` emoji list floats above the chat input, like Slack's. */
@@ -680,7 +668,7 @@ textarea:focus {
   padding: 4px;
   max-height: 240px;
   overflow-y: auto;
-  background: #2b1f19;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
@@ -708,7 +696,7 @@ textarea:focus {
 }
 
 .emoji-suggestions li[aria-selected='true'] {
-  background: rgba(244, 162, 89, 0.18);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--text);
 }
 
@@ -741,7 +729,7 @@ textarea:focus {
 .history-ask {
   margin: 0 0 12px;
   padding: 10px;
-  border: 1px dashed var(--amber);
+  border: 1px dashed var(--accent);
   border-radius: 12px;
 }
 
@@ -764,7 +752,7 @@ textarea:focus {
 
 .giphy-preview .hint a,
 .setting .hint a {
-  color: var(--amber);
+  color: var(--accent);
 }
 
 .giphy-actions {
@@ -794,8 +782,8 @@ textarea:focus {
   flex: none;
   border-radius: 50%;
   background:
-    radial-gradient(circle, var(--bg) 0 6%, var(--amber) 7% 26%, transparent 27%),
-    repeating-radial-gradient(circle, #1c1411 0 2px, #2a1f1a 3px 4px);
+    radial-gradient(circle, var(--bg) 0 6%, var(--accent) 7% 26%, transparent 27%),
+    repeating-radial-gradient(circle, var(--surface-deep) 0 2px, var(--surface) 3px 4px);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
@@ -817,7 +805,7 @@ textarea:focus {
   width: 120px;
   height: 120px;
   margin-bottom: 20px;
-  box-shadow: 0 0 60px rgba(244, 162, 89, 0.25);
+  box-shadow: 0 0 60px color-mix(in srgb, var(--accent) 25%, transparent);
   animation: spin 6s linear infinite;
 }
 

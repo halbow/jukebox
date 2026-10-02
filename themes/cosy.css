@@ -1,0 +1,33 @@
+/* Cosy: warm vinyl evening, the default. Every theme sets these tokens, see themes/README.md. */
+:root {
+  --font: ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --radius: 18px;
+
+  --bg: #16100d;
+  --surface: #2b1f19; /* popovers, the empty screen */
+  --surface-deep: #120c0a;
+  --card: rgba(43, 31, 25, 0.78);
+  --card-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  --line: #3e2e25;
+  --text: #f4e7d4;
+  --muted: #b9a38d;
+  --accent: #f4a259; /* amber */
+  --accent-2: #e2725b; /* terracotta */
+  --on-accent: #2a140b;
+  --ok: #a3c47a;
+  --err: #f08b78;
+
+  /* Chat names, hashed from the peer id. Readable on the cards, none of them the --ok kept for your own. */
+  --sender-0: #f4a259;
+  --sender-1: #7ec4cf;
+  --sender-2: #f2a7c3;
+  --sender-3: #e9c46a;
+  --sender-4: #b8a1e3;
+  --sender-5: #f08b78;
+  --sender-6: #8fb8f0;
+  --sender-7: #d4a373;
+
+  --backdrop:
+    radial-gradient(1200px 600px at 15% -10%, rgba(244, 162, 89, 0.16), transparent 60%),
+    radial-gradient(900px 500px at 110% 110%, rgba(226, 114, 91, 0.14), transparent 60%), var(--bg);
+}

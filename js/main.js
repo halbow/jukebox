@@ -6,6 +6,7 @@ import { createPassphrase, parsePassphrase } from './passphrase.js'
 import { EMPTY_QUEUE, MAX_QUEUE, isQueue, thumbnailUrl } from './queue.js'
 import { joinJukebox, randomId } from './room.js'
 import { Sync, expectedPosition, isNewer, isState } from './sync.js'
+import { DEFAULT_THEME, THEMES, applyTheme, isTheme } from './theme.js'
 import { PLAYER_STATE, createPlayer, currentVideoId, parseVideoId } from './youtube.js'
 
 const MAX_PEOPLE = 12 // you included. Soft cap: in a mesh every extra person costs everyone a connection.
@@ -19,10 +20,10 @@ const views = { home: $('view-home'), room: $('view-room'), ended: $('view-ended
 
 let player = null
 let room = null
-let actions = null // { hello, state, chat, queue, history } Trystero actions
+let actions = null // { hello, state, chat, queue, history, theme } Trystero actions
 let passphrase = null
 let creating = false // just clicked "Create a room", so the name prompt says so
-// What survives a refresh, per tab and per room: { peerId, name, joinedAt, state, chat, queue, sharedWith }
+// What survives a refresh, per tab and per room: { peerId, name, joinedAt, state, chat, queue, theme, sharedWith }
 let session = null
 
 const people = new Map() // Trystero peer id → { name, joinedAt, pausedLocally, from }
@@ -157,13 +158,14 @@ function loadSession(phrase) {
         state: isState(saved.state) ? saved.state : null,
         chat: Array.isArray(saved.chat) ? saved.chat.filter(isChat) : [],
         queue: isQueue(saved.queue) ? saved.queue : EMPTY_QUEUE,
+        theme: isTheme(saved.theme) ? saved.theme : DEFAULT_THEME,
         sharedWith: isSharedWith(saved.sharedWith) ? saved.sharedWith : {},
       }
     }
   } catch {
     // corrupted or missing: start fresh
   }
-  return { peerId: randomId(), name: '', joinedAt: Date.now(), state: null, chat: [], queue: EMPTY_QUEUE, sharedWith: {} }
+  return { peerId: randomId(), name: '', joinedAt: Date.now(), state: null, chat: [], queue: EMPTY_QUEUE, theme: DEFAULT_THEME, sharedWith: {} }
 }
 
 // session peer id → whether they get the chat history replayed
@@ -176,6 +178,7 @@ function save() {
   session.state = sync.state
   session.chat = chatLog
   session.queue = queue
+  session.theme = theme
   sessionStorage.setItem(sessionKey(passphrase), JSON.stringify(session))
 }
 
@@ -680,6 +683,8 @@ async function openRoom(phrase) {
   sync.peerId = session.peerId
   chatLog = session.chat
   queue = session.queue
+  theme = session.theme
+  applyTheme(theme.id)
   renderChat()
   renderQueue()
 
@@ -713,13 +718,16 @@ async function connect() {
     chat: room.makeAction('chat'),
     queue: room.makeAction('queue'),
     history: room.makeAction('history'),
+    theme: room.makeAction('theme'),
   }
+  connectedAt = Date.now()
 
   room.onPeerJoin = (id) => {
     const target = { target: id }
     actions.hello.send(hello(), target)
     if (sync.state) actions.state.send(sync.state, target)
     if (queue.sentAt) actions.queue.send(queue, target)
+    if (theme.sentAt) actions.theme.send(theme, target)
     // The chat history waits for their hello: it says who they are, and whether they're new.
   }
   room.onPeerLeave = (id) => {
@@ -773,6 +781,16 @@ async function connect() {
     queue = msg
     renderQueue()
     save()
+  }
+  actions.theme.onMessage = (msg, { peerId: id }) => {
+    if (!isTheme(msg)) return
+    if (!isNewer(msg, theme)) {
+      if (isNewer(theme, msg)) actions.theme.send(theme, { target: id }) // stale: bring them up to date
+      return
+    }
+    // Only a change made while we're here gets a line, not the room's theme handed to us on arrival.
+    if (msg.sentAt > connectedAt && msg.id !== theme.id) addNotice(`${cleanName(msg.by) || 'Someone'} switched the theme to ${THEMES[msg.id]}`)
+    receiveTheme(msg)
   }
 }
 
@@ -876,10 +894,33 @@ function askName() {
   })
 }
 
+// ---------- theme ----------
+
+let theme = DEFAULT_THEME
+let connectedAt = Infinity // when we joined the mesh: themes picked after that are announced in the chat
+
+function receiveTheme(msg) {
+  theme = msg
+  applyTheme(theme.id)
+  $('settings-theme').value = theme.id
+  save()
+}
+
+function setTheme(id) {
+  if (id === theme.id) return
+  receiveTheme({ id, by: session.name, sentAt: Date.now(), from: session.peerId })
+  actions?.theme.send(theme)
+  addNotice(`You switched the theme to ${THEMES[id]}`)
+}
+
+$('settings-theme').append(...Object.entries(THEMES).map(([id, name]) => new Option(name, id)))
+$('settings-theme').addEventListener('change', (e) => setTheme(e.target.value))
+
 // ---------- settings ----------
 
 function openSettings() {
   $('settings-name-input').value = session.name
+  $('settings-theme').value = theme.id
   $('settings-sound').checked = soundOn()
   $('settings-giphy-input').value = loadKey()
   $('settings-giphy-remove').hidden = !loadKey()
