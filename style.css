@@ -263,7 +263,8 @@ body:has(#view-room:not([hidden])) .topbar {
   font-size: 0.85rem;
 }
 
-input {
+input,
+textarea {
   width: 100%;
   padding: 10px 14px;
   border: 1px solid var(--line);
@@ -275,7 +276,8 @@ input {
   transition: border-color 0.15s;
 }
 
-input:focus {
+input:focus,
+textarea:focus {
   border-color: var(--amber);
 }
 
@@ -636,7 +638,7 @@ input:focus {
   color: var(--amber);
 }
 
-.chat-form.editing input {
+.chat-form.editing textarea {
   border-color: var(--amber);
 }
 
@@ -644,7 +646,7 @@ input:focus {
   margin: 0 0 6px;
 }
 
-.chat-form.command input {
+.chat-form.command textarea {
   border-color: var(--amber);
   color: var(--amber);
 }
@@ -652,7 +654,18 @@ input:focus {
 .chat-form {
   position: relative;
   display: flex;
+  align-items: flex-end;
   gap: 8px;
+}
+
+/* The chat input grows with the message (see `fitChatInput`), up to about 5 lines, then scrolls. */
+.chat-form textarea {
+  display: block;
+  resize: none;
+  max-height: calc(5lh + 22px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(244, 231, 212, 0.2) transparent;
 }
 
 /* The `:` emoji list floats above the chat input, like Slack's. */

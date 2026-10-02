@@ -245,6 +245,7 @@ $('chat-form').addEventListener('submit', (e) => {
   const command = !editing && parseGiphyCommand(input.value)
   if (command) {
     input.value = ''
+    fitChatInput()
     closeEmoji()
     renderCommandHint()
     if (command.key) return askGiphyKey()
@@ -254,6 +255,7 @@ $('chat-form').addEventListener('submit', (e) => {
   const text = replaceShortcodes(input.value.trim()).slice(0, MAX_CHAT_LENGTH)
   if (!text && !editing) return
   input.value = ''
+  fitChatInput()
   closeEmoji()
   const edited = editing
   stopEditing()
@@ -263,12 +265,31 @@ $('chat-form').addEventListener('submit', (e) => {
   actions?.chat.send(msg)
 })
 
+// A one-line message in a box that grows with it, so you see all of it while typing: Enter sends, no newlines.
+function fitChatInput() {
+  const input = $('chat-input')
+  input.style.height = 'auto'
+  input.style.height = `${input.scrollHeight + input.offsetHeight - input.clientHeight}px` // plus the borders
+}
+
+// The width changes with the window and chat mode, and so does the wrapping.
+new ResizeObserver(fitChatInput).observe($('chat-input'))
+
+function flattenLines(input) {
+  const flat = (text) => text.replace(/\r?\n|\r/g, ' ')
+  const before = flat(input.value.slice(0, input.selectionStart))
+  input.value = before + flat(input.value.slice(input.selectionStart))
+  input.setSelectionRange(before.length, before.length)
+}
+
 function startEditing() {
   editing = chatLog.findLast((m) => m.from === session.peerId && !m.gif) // a GIF can't be edited
   if (!editing) return
   const input = $('chat-input')
   input.value = editing.text
+  fitChatInput()
   input.setSelectionRange(input.value.length, input.value.length)
+  input.scrollTop = input.scrollHeight // show the end, where the caret is
   $('chat-form').classList.add('editing')
   $('chat-editing').hidden = false
   renderCommandHint()
@@ -281,12 +302,16 @@ function stopEditing() {
 }
 
 $('chat-input').addEventListener('keydown', (e) => {
-  if (emojiOpen || e.isComposing) return // the emoji list has the arrows and Escape
-  if (e.key === 'ArrowUp' && !e.target.value) {
+  if (emojiOpen || e.isComposing) return // the emoji list has the arrows, Enter and Escape
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    $('chat-form').requestSubmit()
+  } else if (e.key === 'ArrowUp' && !e.target.value) {
     e.preventDefault()
     startEditing()
   } else if (e.key === 'Escape' && editing) {
     e.target.value = ''
+    fitChatInput()
     stopEditing()
   } else if (e.key === 'Escape' && giphy) {
     closeGiphy()
@@ -474,6 +499,7 @@ function renderEmoji() {
 function pickEmoji(i) {
   const input = $('chat-input')
   input.setRangeText(emojiOpen.suggestions[i].insert, emojiOpen.start, input.selectionStart, 'end')
+  fitChatInput()
   closeEmoji()
   renderCommandHint()
 }
@@ -503,8 +529,10 @@ function renderCommandHint() {
 
 $('chat-input').addEventListener('input', (e) => {
   const input = e.target
+  if (/[\r\n]/.test(input.value)) flattenLines(input) // pasted lines
   const done = completedShortcodeAt(input.value, input.selectionStart)
   if (done) input.setRangeText(done.emoji, done.start, done.end, 'end')
+  fitChatInput()
   renderCommandHint()
   const { start, suggestions } = suggestionsAt(input)
   if (!suggestions.length) return closeEmoji()
