@@ -18,13 +18,13 @@ const views = { home: $('view-home'), room: $('view-room'), ended: $('view-ended
 
 let player = null
 let room = null
-let actions = null // { hello, state, chat, queue } Trystero actions
+let actions = null // { hello, state, chat, queue, history } Trystero actions
 let passphrase = null
 let creating = false // just clicked "Create a room", so the name prompt says so
-// What survives a refresh, per tab and per room: { peerId, name, joinedAt, state, chat, queue }
+// What survives a refresh, per tab and per room: { peerId, name, joinedAt, state, chat, queue, sharedWith }
 let session = null
 
-const people = new Map() // Trystero peer id → { name, joinedAt, pausedLocally }
+const people = new Map() // Trystero peer id → { name, joinedAt, pausedLocally, from }
 
 const sync = new Sync({
   peerId: '', // set once the session is known
@@ -150,12 +150,18 @@ function loadSession(phrase) {
         state: isState(saved.state) ? saved.state : null,
         chat: Array.isArray(saved.chat) ? saved.chat.filter(isChat) : [],
         queue: isQueue(saved.queue) ? saved.queue : EMPTY_QUEUE,
+        sharedWith: isSharedWith(saved.sharedWith) ? saved.sharedWith : {},
       }
     }
   } catch {
     // corrupted or missing: start fresh
   }
-  return { peerId: randomId(), name: '', joinedAt: Date.now(), state: null, chat: [], queue: EMPTY_QUEUE }
+  return { peerId: randomId(), name: '', joinedAt: Date.now(), state: null, chat: [], queue: EMPTY_QUEUE, sharedWith: {} }
+}
+
+// session peer id → whether they get the chat history replayed
+function isSharedWith(value) {
+  return value !== null && typeof value === 'object' && Object.values(value).every((v) => typeof v === 'boolean')
 }
 
 function save() {
@@ -168,7 +174,7 @@ function save() {
 
 // ---------- chat ----------
 
-let chatLog = [] // sorted by sentAt; replayed to everyone who joins after us
+let chatLog = [] // sorted by sentAt; replayed to whoever joins after us, if the room agrees (see offerHistory)
 let editing = null // the message of yours being edited, picked with ↑ in an empty input
 
 function receiveChat(msg) {
@@ -657,6 +663,7 @@ async function connect() {
     state: room.makeAction('state'),
     chat: room.makeAction('chat'),
     queue: room.makeAction('queue'),
+    history: room.makeAction('history'),
   }
 
   room.onPeerJoin = (id) => {
@@ -664,18 +671,29 @@ async function connect() {
     actions.hello.send(hello(), target)
     if (sync.state) actions.state.send(sync.state, target)
     if (queue.sentAt) actions.queue.send(queue, target)
-    for (const msg of chatLog) actions.chat.send(msg, target)
+    // The chat history waits for their hello: it says who they are, and whether they're new.
   }
   room.onPeerLeave = (id) => {
     people.delete(id)
+    historyAsks = historyAsks.filter((ask) => ask.id !== id)
     renderPeople()
+    renderHistoryAsks()
   }
 
   actions.hello.onMessage = (data, { peerId: id }) => {
-    if (!Number.isFinite(data?.joinedAt)) return
-    people.set(id, { name: cleanName(data.name) || 'Friend', joinedAt: data.joinedAt, pausedLocally: data.pausedLocally === true })
+    if (!Number.isFinite(data?.joinedAt) || typeof data.from !== 'string') return
+    const first = !people.has(id) // hello is resent on every ⏸ change
+    const person = { name: cleanName(data.name) || 'Friend', joinedAt: data.joinedAt, pausedLocally: data.pausedLocally === true, from: data.from }
+    people.set(id, person)
     renderPeople()
-    if (isOverCap()) endRoom(`The room is full: ${MAX_PEOPLE} people are already listening.`)
+    if (isOverCap()) return endRoom(`The room is full: ${MAX_PEOPLE} people are already listening.`)
+    if (first) offerHistory(id, person)
+  }
+  actions.history.onMessage = (data, { peerId: id }) => {
+    if (typeof data?.from !== 'string' || typeof data.share !== 'boolean') return
+    if (people.get(id)?.from === data.from) return // nobody answers for themselves
+    if (data.from in session.sharedWith) return // already settled here
+    settleHistory(data.from, data.share)
   }
   actions.state.onMessage = (state, { peerId: id }) => {
     if (!isState(state)) return
@@ -702,7 +720,60 @@ async function connect() {
 }
 
 function hello() {
-  return { name: session.name, joinedAt: session.joinedAt, pausedLocally: sync.pausedLocally }
+  return { name: session.name, joinedAt: session.joinedAt, pausedLocally: sync.pausedLocally, from: session.peerId }
+}
+
+// ---------- chat history for newcomers ----------
+
+let historyAsks = [] // newcomers waiting for someone here to answer: [{ id, from, name }]
+
+/**
+ * Someone new only gets the chat history once someone in the room says yes. Everyone is asked and the first
+ * answer settles it for all. People who were here before us, or come back after a refresh, get it as before.
+ */
+function offerHistory(id, { from, name, joinedAt }) {
+  if (!(from in session.sharedWith)) {
+    if (chatLog.length && joinedAt > session.joinedAt) {
+      historyAsks.push({ id, from, name })
+      return renderHistoryAsks()
+    }
+    session.sharedWith[from] = true // nothing to hide: they were here first, or there's no history yet
+    save()
+  }
+  if (session.sharedWith[from]) sendHistory(id)
+}
+
+function answerHistory(from, share) {
+  settleHistory(from, share)
+  actions?.history.send({ from, share })
+}
+
+function settleHistory(from, share) {
+  session.sharedWith[from] = share
+  save()
+  historyAsks = historyAsks.filter((ask) => ask.from !== from)
+  renderHistoryAsks()
+  if (!share) return
+  // Every peer replays what it has, as before: chatKey deduplicates.
+  for (const [id, person] of people) if (person.from === from) sendHistory(id)
+}
+
+function sendHistory(id) {
+  for (const msg of chatLog) actions?.chat.send(msg, { target: id })
+}
+
+function renderHistoryAsks() {
+  $('history-asks').replaceChildren(
+    ...historyAsks.map(({ from, name }) => {
+      const box = Object.assign(document.createElement('div'), { className: 'history-ask' })
+      const text = `${name} just joined. Share the chat history with them?`
+      box.append(
+        Object.assign(document.createElement('p'), { className: 'hint', textContent: text }),
+        actionsRow(button('Share', () => answerHistory(from, true), 'btn small primary'), button("Don't share", () => answerHistory(from, false))),
+      )
+      return box
+    }),
+  )
 }
 
 /** Whoever arrived after the first MAX_PEOPLE leaves. Older members stay, even after a refresh. */

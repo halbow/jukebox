@@ -74,7 +74,11 @@ type State = {
 - Name prompt as a modal over the room, so you see it while typing (remembered locally). Peers announce names to each other on connect.
 - People list with count and a copy-link button, at the top of the chat card.
 - Room: YouTube player; under it the URL input (+ Queue / Play), then a row with Up next and ⏭ Play next on the left (the room's) and ⏸ Pause for me on the right (only yours), then the queue's thumbnails. No "now playing" line: YouTube's own title shows over the player. Connection status in the top bar.
-- Room chat: short text messages to agree on the next video. Late joiners get the last 50 messages from everyone, deduplicated.
+- Room chat: short text messages to agree on the next video. Late joiners get the last 50 messages from everyone, deduplicated, once the room agrees:
+  when someone new joins, everyone already in the room with some history sees "<name> just joined. Share the chat history with them?" (Share / Don't share).
+  The first answer is broadcast as `{ from: <newcomer's peer id>, share }` on a `history` action and settles it for everyone; the newcomer can't answer for themselves.
+  Answers are kept in `sessionStorage` (`sharedWith`), so a refresh doesn't ask again. People who were here before you, and newcomers to a room with no history yet, get it without asking.
+  `hello` carries the sender's session peer id as `from`, to recognise people across refreshes.
 - Chat emoji, Slack style: typing `:` lists matching shortcodes (arrows + Enter or Tab to pick, Escape to close), and a fully typed `:joy:` turns into 😂, `:D` turns into 😃, and `:p` into 😛. Shortcodes come from GitHub's [gemoji](https://github.com/wooorm/gemoji), loaded from the CDN and pinned by hash.
 - Edit your last message: ↑ in an empty chat input loads it back (Escape cancels). The edit is resent with the same `from` and `sentAt` plus an `editedAt`; the newest edit wins, shows as "(edited)", and is what late joiners get.
 - `/giphy <search>`, Slack style: a preview only you see, with Send / Shuffle / Cancel (Escape), from 25 results (`rating=pg-13`). Searching needs your own Giphy API key, asked the first time and kept in `localStorage` (`/giphy key` changes or removes it); it never goes to peers, and seeing GIFs needs no key. A GIF message is `{ ...chat, text: <search>, gif: { id, width, height } }`: peers get the Giphy id and build the image URL themselves, never a URL from a peer. GIFs can't be edited, show their still frame under `prefers-reduced-motion`, and "GIF unavailable" once Giphy drops them.

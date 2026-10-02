@@ -11,7 +11,7 @@ npx serve .        # or: python3 -m http.server
 Open the printed URL (it must be http(s), not `file://`).
 
 1. **Create a room** and send the link to your friends.
-2. They open it, pick a name, and they're in.
+2. They open it, pick a name, and they're in. Whoever's already there is asked whether to share the chat history with them.
 3. Refreshing rejoins the room and picks up where the video was.
 4. ↑ in an empty chat input edits your last message.
 5. `/giphy cats` searches a GIF (bring your own [Giphy API key](https://developers.giphy.com/dashboard/): Create an App → API).

@@ -663,6 +663,18 @@ input:focus {
   margin-left: 0;
 }
 
+/* Someone new is waiting: share the chat history with them or not. */
+.history-ask {
+  margin: 0 0 12px;
+  padding: 10px;
+  border: 1px dashed var(--amber);
+  border-radius: 12px;
+}
+
+.chat .history-ask .hint {
+  margin: 0;
+}
+
 /* Only you see it, between the log and the input. */
 .giphy-preview {
   margin: 0 0 12px;
