@@ -40,6 +40,7 @@ const sync = new Sync({
 
 function show(name) {
   for (const [key, el] of Object.entries(views)) el.hidden = key !== name
+  $('open-settings').hidden = name !== 'room'
 }
 
 function setStatus(text, tone) {

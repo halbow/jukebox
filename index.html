@@ -44,7 +44,10 @@
   <body>
     <header class="topbar">
       <a class="brand" href="./"><span class="vinyl small"></span>jukebox</a>
-      <span class="pill" id="status" hidden></span>
+      <div class="topbar-end">
+        <span class="pill" id="status" hidden></span>
+        <button id="open-settings" class="icon-btn" title="Settings" aria-label="Settings" hidden>⚙️</button>
+      </div>
     </header>
 
     <main>
@@ -97,7 +100,6 @@
               In the room
               <button id="copy-invite" class="icon-btn" title="Copy room link" aria-label="Copy room link">🔗</button>
               <span class="count" id="people-count"></span>
-              <button id="open-settings" class="icon-btn" title="Settings" aria-label="Settings">⚙️</button>
             </h3>
             <ul id="people" class="people"></ul>
           </div>

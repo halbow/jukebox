@@ -18,7 +18,7 @@ Open the printed URL (it must be http(s), not `file://`).
 6. The 💬 button in the chat switches to chat mode (chat in the middle, video in the corner); 📺 switches back.
 7. **⏸ Pause for me** stops the music for you only; **Rejoin the room** jumps back to where the others are. They see a ⏸ next to your name meanwhile.
 8. New messages put a dot on the tab's icon and play a ding while you're away.
-9. ⚙️ next to "In the room" opens the settings: your name, the message sound, your Giphy key.
+9. ⚙️ in the top bar opens the settings: your name, the message sound, your Giphy key.
 
 ## Code
 
