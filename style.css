@@ -584,12 +584,17 @@ input:focus {
   font-weight: 600;
 }
 
+/* The scrollbar hugs the card's right edge, in its padding, rather than eating into the narrow message column,
+   and drops the track so only a faint thumb shows. */
 .chat-log {
   list-style: none;
-  margin: 0 0 12px;
-  padding: 0;
+  margin: 0 -20px 12px 0;
+  padding: 0 12px 0 0;
   max-height: 280px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(244, 231, 212, 0.2) transparent;
 }
 
 .chat-log:empty {
