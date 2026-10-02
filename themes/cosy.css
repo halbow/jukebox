@@ -17,6 +17,11 @@
   --ok: #a3c47a;
   --err: #f08b78;
 
+  --scheme: dark; /* or light: native controls and scrollbars */
+  --field: rgba(0, 0, 0, 0.3); /* inputs, thumbnails */
+  --raised: rgba(255, 255, 255, 0.04); /* buttons */
+  --hover: rgba(255, 255, 255, 0.08); /* icon buttons */
+
   /* Chat names, hashed from the peer id. Readable on the cards, none of them the --ok kept for your own. */
   --sender-0: #f4a259;
   --sender-1: #7ec4cf;

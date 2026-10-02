@@ -1,0 +1,190 @@
+/* Concert hall: an evening of classical music. Red velvet curtains framing the stage, gilded frames, sheet-music
+   staves in the air, a treble clef, a keyboard, and the engraved type of a concert programme. */
+:root[data-theme='concert'] {
+  --font: Baskerville, 'Baskerville Old Face', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --title-font: Didot, 'Bodoni 72', 'Bodoni MT', Baskerville, Georgia, serif;
+  --radius: 3px;
+
+  --bg: #16040a;
+  --surface: #2a0911;
+  --surface-deep: #0f0206;
+  --card: rgba(36, 8, 14, 0.88);
+  --card-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  --line: #5e3a22;
+  --text: #f7ecd9; /* ivory */
+  --muted: #c9ae8f;
+  --accent: #d9b45a; /* gold leaf */
+  --accent-2: #a3172d; /* velvet */
+  --on-accent: #1f0a05;
+  --ok: #b5cf8a;
+  --err: #ff8a80;
+
+  --scheme: dark;
+  --field: rgba(0, 0, 0, 0.3);
+  --raised: rgba(255, 255, 255, 0.03);
+  --hover: rgba(217, 180, 90, 0.12);
+
+  --sender-0: #d9b45a;
+  --sender-1: #a7c7e7;
+  --sender-2: #f2a7b5;
+  --sender-3: #f0dc9a;
+  --sender-4: #c7b3e6;
+  --sender-5: #f0a07a;
+  --sender-6: #9fd0c0;
+  --sender-7: #e0c3a0;
+
+  /* Velvet curtains drawn to the sides, gold light on the stage, and staves of music floating in between. */
+  --backdrop:
+    repeating-linear-gradient(90deg, #3d0712 0, #7a1024 22px, #3d0712 44px) 0 0 / 9vw 100% no-repeat fixed,
+    repeating-linear-gradient(90deg, #3d0712 0, #7a1024 22px, #3d0712 44px) 100% 0 / 9vw 100% no-repeat fixed,
+    linear-gradient(180deg, #5c0b1b, #3d0712 60%, transparent) 0 0 / 100% 18px no-repeat fixed,
+    radial-gradient(1100px 600px at 50% -10%, rgba(217, 180, 90, 0.16), transparent 70%),
+    linear-gradient(
+        transparent 0 60px,
+        rgba(217, 180, 90, 0.07) 60px 61px,
+        transparent 61px 70px,
+        rgba(217, 180, 90, 0.07) 70px 71px,
+        transparent 71px 80px,
+        rgba(217, 180, 90, 0.07) 80px 81px,
+        transparent 81px 90px,
+        rgba(217, 180, 90, 0.07) 90px 91px,
+        transparent 91px 100px,
+        rgba(217, 180, 90, 0.07) 100px 101px,
+        transparent 101px
+      )
+      0 0 / 100% 180px,
+    var(--bg);
+}
+
+/* Engraved titles. */
+[data-theme='concert'] h1,
+[data-theme='concert'] h2,
+[data-theme='concert'] .brand {
+  font-family: var(--title-font);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--accent);
+}
+
+[data-theme='concert'] .brand {
+  letter-spacing: 0.08em;
+  font-size: 1.4rem;
+}
+
+/* A treble clef after the name. */
+[data-theme='concert'] .brand::after {
+  content: '𝄞';
+  margin-left: -2px;
+  font-style: normal;
+  font-size: 1.5em;
+  line-height: 1;
+}
+
+[data-theme='concert'] h3 {
+  font-variant: small-caps;
+  letter-spacing: 0.12em;
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: var(--accent);
+}
+
+/* Ornaments, like a programme's: ❦ under the people, a fine double rule. */
+[data-theme='concert'] .room-people {
+  position: relative;
+  border-bottom: 3px double rgba(217, 180, 90, 0.4);
+}
+
+[data-theme='concert'] .room-people::after {
+  content: '❦';
+  position: absolute;
+  bottom: -0.8em;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 0.5em;
+  background: #24080e;
+  color: var(--accent);
+  line-height: 1.4;
+}
+
+/* A five-line staff behind the big title. */
+[data-theme='concert'] .hero h1 {
+  padding: 0.2em 0;
+  background: repeating-linear-gradient(transparent 0 calc(20% - 1px), rgba(217, 180, 90, 0.3) calc(20% - 1px) 20%);
+}
+
+/* Cards in a thin gilded frame, with the inner rule of an engraving. */
+[data-theme='concert'] .card {
+  border-color: rgba(217, 180, 90, 0.45);
+  box-shadow:
+    inset 0 0 0 5px #24080e,
+    inset 0 0 0 6px rgba(217, 180, 90, 0.25),
+    var(--card-shadow);
+}
+
+/* A keyboard along the top of the chat. */
+[data-theme='concert'] .view.room .chat {
+  position: relative;
+}
+
+[data-theme='concert'] .view.room .chat::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  right: 6px;
+  height: 14px;
+  pointer-events: none;
+  opacity: 0.85;
+  background:
+    /* an octave is 7 white keys of 16px; the 2 + 3 black ones sit on the C-D, D-E, F-G, G-A, A-B joins */
+    linear-gradient(90deg,
+        transparent 0 10.3%, #0d0d0d 10.3% 18.3%, transparent 18.3% 24.6%, #0d0d0d 24.6% 32.6%,
+        transparent 32.6% 53.1%, #0d0d0d 53.1% 61.2%, transparent 61.2% 67.4%, #0d0d0d 67.4% 75.4%,
+        transparent 75.4% 81.7%, #0d0d0d 81.7% 89.7%, transparent 89.7%)
+      0 0 / 112px 60% repeat-x,
+    repeating-linear-gradient(90deg, #f7ecd9 0 15px, #7a6a55 15px 16px) 0 0 / 112px 100% repeat-x;
+}
+
+[data-theme='concert'] .view.room .chat > :first-child {
+  margin-top: 14px;
+}
+
+/* Gold leaf, so the dark text stays readable end to end. */
+[data-theme='concert'] .btn {
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+  font-weight: 400;
+  font-size: 1.05em;
+}
+
+[data-theme='concert'] .btn:not(.primary) {
+  border-color: rgba(217, 180, 90, 0.45);
+  color: var(--accent);
+}
+
+[data-theme='concert'] .btn.primary {
+  background: linear-gradient(135deg, #f6e3a4, #d2a443 45%, #f3dc94 55%, #a97b25);
+  box-shadow: 0 6px 24px rgba(217, 180, 90, 0.25);
+}
+
+/* The screen hangs in a gilded frame, like a painting in the foyer. */
+[data-theme='concert'] .screen {
+  border: 2px solid #d9b45a;
+  border-radius: var(--radius);
+  box-shadow:
+    0 0 0 4px #2a0911,
+    0 0 0 6px #b8913d,
+    0 0 0 10px #1f060b,
+    0 0 0 11px rgba(217, 180, 90, 0.5),
+    0 30px 80px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='concert'] .empty {
+  font-style: italic;
+  color: var(--accent);
+}
+
+[data-theme='concert'] .people li,
+[data-theme='concert'] .pill {
+  border-color: rgba(217, 180, 90, 0.35);
+}

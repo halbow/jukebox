@@ -1,13 +1,13 @@
 # Themes
 
-The room's look, picked in the settings and shared with everyone in the room. `style.css` only lays things out:
+The room's look, picked in the settings and shared with everyone in the room. Every theme is music-related. `style.css` only lays things out:
 every color, the font, the corner radius and the page backdrop come from the tokens a theme sets.
 
 ## Adding a theme
 
 1. Copy `cosy.css` to `<id>.css` and scope it to `:root[data-theme='<id>']` (`cosy.css` alone uses `:root`: it's the default and the fallback).
 2. Set every token. Anything you leave out falls back to Cosy's.
-3. Optionally, add touches only your theme has under `[data-theme='<id>'] …`, like the scanlines in `cyberpunk.css`.
+3. Optionally, add touches only your theme has under `[data-theme='<id>'] …`, like the speaker grilles and FM dial in `cassette.css` or the keyboard in `concert.css`. Keep them to looks: no layout changes, nothing that catches clicks (`pointer-events: none` on decorations).
 4. Link it in `index.html`, after `cosy.css`, and add `<id>: '<Name>'` to `THEMES` in `js/theme.js`.
 
 ## Tokens
@@ -24,4 +24,6 @@ every color, the font, the corner radius and the page backdrop come from the tok
 | `--accent`, `--accent-2` | Highlights, focus, the primary button's gradient, the favicon dot (`--accent-2`) |
 | `--on-accent` | Text on the primary button |
 | `--ok`, `--err` | Connected / your own name, errors |
+| `--scheme` | `dark` or `light`: native controls (the theme picker, checkboxes) and scrollbars |
+| `--field`, `--raised`, `--hover` | Inputs and thumbnails, buttons (any background, gradients too), icon buttons on hover |
 | `--sender-0` … `--sender-7` | Other people's names in the chat |

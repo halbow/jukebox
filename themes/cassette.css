@@ -1,0 +1,229 @@
+/* Cassette: an '80s radio-cassette boombox. Black plastic, chrome trim, speaker grilles, an FM dial,
+   a tape window with its two reels, and chunky piano-key buttons. */
+:root[data-theme='cassette'] {
+  --font: 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
+  --panel-font: 'DIN Alternate', 'DIN Condensed', Eurostile, 'Arial Narrow', 'Helvetica Neue', sans-serif;
+  --radius: 6px;
+
+  --bg: #141416;
+  --surface: #232326;
+  --surface-deep: #0c0c0d;
+  --card: rgba(26, 26, 28, 0.92);
+  --card-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px #050505,
+    0 20px 50px rgba(0, 0, 0, 0.6);
+  --line: #4a4a4e;
+  --text: #ececec;
+  --muted: #9d9da2;
+  --accent: #ff8a2a; /* the tuner's glow */
+  --accent-2: #e3262b; /* REC */
+  --on-accent: #1a0a00;
+  --ok: #7ddc6a;
+  --err: #ff5a5a;
+
+  --scheme: dark;
+  --field: #0b0b0c;
+  --raised: linear-gradient(#ececee, #a7a7ac);
+  --hover: rgba(255, 255, 255, 0.08);
+
+  --sender-0: #ff8a2a;
+  --sender-1: #6cc6e8;
+  --sender-2: #f59ab8;
+  --sender-3: #ffd45c;
+  --sender-4: #b9a2f0;
+  --sender-5: #ff6f61;
+  --sender-6: #8fb3ff;
+  --sender-7: #d8c3a0;
+
+  /* Textured black plastic, with chrome rings where the speakers sit (the grilles are `body::before`). */
+  --backdrop:
+    radial-gradient(circle at 7% 62%, transparent 0 200px, #8b8b90 201px 205px, #2a2a2d 206px 214px, #7a7a7f 215px 217px, transparent 218px) fixed,
+    radial-gradient(circle at 93% 62%, transparent 0 200px, #8b8b90 201px 205px, #2a2a2d 206px 214px, #7a7a7f 215px 217px, transparent 218px) fixed,
+    radial-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1.5px) 0 0 / 3px 3px,
+    linear-gradient(180deg, #1d1d20, #121214);
+}
+
+/* Speaker grilles: perforated metal, cut into the two circles. */
+[data-theme='cassette'] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(circle, #050505 1.6px, #3a3a3e 2.2px) 0 0 / 7px 7px;
+  -webkit-mask:
+    radial-gradient(circle at 7% 62%, #000 0 200px, transparent 201px),
+    radial-gradient(circle at 93% 62%, #000 0 200px, transparent 201px);
+  mask:
+    radial-gradient(circle at 7% 62%, #000 0 200px, transparent 201px),
+    radial-gradient(circle at 93% 62%, #000 0 200px, transparent 201px);
+}
+
+/* Printed panel labels. */
+[data-theme='cassette'] h1,
+[data-theme='cassette'] h2,
+[data-theme='cassette'] h3,
+[data-theme='cassette'] .setting > label {
+  font-family: var(--panel-font);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+[data-theme='cassette'] h3 {
+  font-size: 0.8rem;
+  color: #c9c9ce;
+}
+
+/* A chrome badge. */
+[data-theme='cassette'] .brand {
+  font-family: var(--panel-font);
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: linear-gradient(180deg, #fff 0%, #c4c4c8 45%, #6f6f74 55%, #e2e2e6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* The FM dial, in the middle of the top bar: frequencies, ticks, and the red needle. */
+[data-theme='cassette'] .topbar {
+  position: relative;
+}
+
+@media (min-width: 820px) {
+  [data-theme='cassette'] .topbar::before {
+    content: 'FM 88 92 96 100 104 108 MHz';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: min(420px, 36vw);
+    transform: translate(-50%, -50%);
+    padding: 3px 12px 9px;
+    border: 1px solid #5a5a5e;
+    border-radius: 4px;
+    background:
+      linear-gradient(var(--accent-2), var(--accent-2)) 63% 0 / 2px 100% no-repeat,
+      repeating-linear-gradient(90deg, rgba(255, 170, 90, 0.7) 0 1px, transparent 1px 8px) 0 100% / 100% 5px no-repeat,
+      linear-gradient(180deg, #1a120a, #0b0805);
+    box-shadow:
+      inset 0 0 12px rgba(255, 138, 42, 0.25),
+      0 1px 0 rgba(255, 255, 255, 0.06);
+    color: #ffb070;
+    font: 10px/1.4 var(--panel-font);
+    letter-spacing: 0.08em;
+    text-align: justify;
+    text-align-last: justify;
+    text-shadow: 0 0 6px rgba(255, 138, 42, 0.8);
+    pointer-events: none;
+  }
+}
+
+/* Piano-key buttons: silver, with depth, that go down when pressed. */
+[data-theme='cassette'] .btn {
+  border-color: #3a3a3e;
+  border-radius: 3px;
+  color: #141416;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--panel-font);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 3px 0 #4a4a4e,
+    0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='cassette'] .btn:hover:not(:disabled) {
+  transform: none;
+  filter: brightness(1.06);
+}
+
+[data-theme='cassette'] .btn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 1px 0 #4a4a4e;
+}
+
+[data-theme='cassette'] .btn.primary {
+  background: linear-gradient(#ffb06a, #ff7a14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 3px 0 #8a3a00,
+    0 4px 12px rgba(255, 122, 20, 0.35);
+}
+
+[data-theme='cassette'] .btn.primary:hover:not(:disabled) {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 3px 0 #8a3a00,
+    0 4px 16px rgba(255, 122, 20, 0.5);
+}
+
+[data-theme='cassette'] .card {
+  border-color: #6a6a6f;
+}
+
+[data-theme='cassette'] .people li,
+[data-theme='cassette'] .pill {
+  border-radius: 3px;
+}
+
+[data-theme='cassette'] input,
+[data-theme='cassette'] textarea,
+[data-theme='cassette'] select {
+  border-radius: 3px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* The screen is the tape deck's window, in a chrome frame. */
+[data-theme='cassette'] .screen {
+  border-radius: 10px;
+  border-color: #9a9a9e;
+  box-shadow:
+    0 0 0 6px #0e0e0f,
+    0 0 0 8px #7c7c80,
+    0 30px 70px rgba(0, 0, 0, 0.6);
+}
+
+/* With no video, there's a cassette in the deck, behind smoked glass: the shell, its striped label,
+   the little window and the two hubs. Positions are the box's center (x, y) solved for its size. */
+[data-theme='cassette'] .empty {
+  place-items: end center;
+  padding-bottom: 6%;
+  background:
+    linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.05) 44%, transparent 52%),
+    radial-gradient(circle closest-side, #0d0d0d 0 28%, #e8e8ea 30% 62%, #3d2a1e 64% 96%, transparent 98%) 42.5% 36.3% / 7% 12.4% no-repeat,
+    radial-gradient(circle closest-side, #0d0d0d 0 28%, #e8e8ea 30% 62%, #3d2a1e 64% 80%, transparent 82%) 57.5% 36.3% / 7% 12.4% no-repeat,
+    linear-gradient(#0d0b09, #0d0b09) 50% 36.2% / 30% 13% no-repeat,
+    linear-gradient(#efe4cc 0 62%, #ff8a2a 62% 72%, #e3262b 72% 82%, #efe4cc 82%) 50% 31.25% / 54% 36% no-repeat,
+    radial-gradient(circle closest-side, #6a6a6f 0 60%, transparent 70%) 22.5% 18.5% / 1.4% 2.5% no-repeat,
+    radial-gradient(circle closest-side, #6a6a6f 0 60%, transparent 70%) 77.5% 18.5% / 1.4% 2.5% no-repeat,
+    linear-gradient(#303034, #222225) 50% 31.8% / 62% 56% no-repeat,
+    radial-gradient(circle at center, #1e1e21, #0b0b0c);
+  color: #c9c9ce;
+  font-family: var(--panel-font);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.85rem;
+}
+
+/* The vinyl becomes a reel. */
+[data-theme='cassette'] .vinyl {
+  background:
+    radial-gradient(circle, #0a0a0a 0 12%, #d9d9dc 13% 30%, transparent 31%),
+    conic-gradient(#9a9a9e 0 8%, transparent 8% 33%, #9a9a9e 33% 41%, transparent 41% 66%, #9a9a9e 66% 74%, transparent 74%),
+    radial-gradient(circle, transparent 0 34%, #3d2a1e 35% 64%, #1a1a1a 65%);
+  box-shadow: 0 0 0 2px #7c7c80;
+}
+
+[data-theme='cassette'] .vinyl::after {
+  display: none;
+}
+
+[data-theme='cassette'] .vinyl.big {
+  box-shadow:
+    0 0 0 3px #7c7c80,
+    0 10px 30px rgba(0, 0, 0, 0.5);
+}

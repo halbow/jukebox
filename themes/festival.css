@@ -1,0 +1,67 @@
+/* Festival: the main stage at sunset. Purple sky into orange, the sun going down behind the crowd, wristbands. */
+:root[data-theme='festival'] {
+  --font: ui-rounded, 'SF Pro Rounded', 'Avenir Next', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --radius: 22px;
+
+  --bg: #1b0f2e;
+  --surface: #2c1a45;
+  --surface-deep: #120a20;
+  --card: rgba(40, 22, 64, 0.74);
+  --card-shadow: 0 20px 60px rgba(20, 5, 30, 0.45);
+  --line: #4b2f6b;
+  --text: #fff3e6;
+  --muted: #cdb6da;
+  --accent: #ffb03a; /* the sun */
+  --accent-2: #ff5e7e; /* the sky's last pink */
+  --on-accent: #2a0f1f;
+  --ok: #9be37a;
+  --err: #ff8080;
+
+  --scheme: dark;
+  --field: rgba(20, 8, 35, 0.45);
+  --raised: rgba(255, 255, 255, 0.06);
+  --hover: rgba(255, 255, 255, 0.1);
+
+  --sender-0: #ffb03a;
+  --sender-1: #7fdcff;
+  --sender-2: #ff9ec4;
+  --sender-3: #ffe27a;
+  --sender-4: #c9a8ff;
+  --sender-5: #ff8a65;
+  --sender-6: #8fb8ff;
+  --sender-7: #ffd1a1;
+
+  /* The sun setting behind the stage, the sky from purple to orange. */
+  --backdrop:
+    radial-gradient(circle at 50% 108%, rgba(255, 210, 122, 0.5) 0 140px, rgba(255, 176, 58, 0.18) 141px 260px, transparent 420px),
+    linear-gradient(180deg, #1b0f2e 0%, #3b1957 40%, #7a2a6b 72%, #c9485f 90%, #f0834a 100%) fixed;
+}
+
+/* Wristbands. */
+[data-theme='festival'] .people li {
+  border: 0;
+  border-radius: 4px;
+  background: repeating-linear-gradient(90deg, var(--accent) 0 10px, #ff9b2f 10px 20px);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+[data-theme='festival'] .people li.paused {
+  opacity: 0.55;
+  color: var(--on-accent);
+}
+
+[data-theme='festival'] h1 {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+[data-theme='festival'] .screen {
+  border-color: rgba(255, 176, 58, 0.5);
+  box-shadow:
+    0 0 0 6px rgba(44, 26, 69, 0.85),
+    0 0 70px rgba(255, 94, 126, 0.3),
+    0 30px 80px rgba(20, 5, 30, 0.6);
+}

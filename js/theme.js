@@ -3,7 +3,13 @@
 //
 // A theme is a stylesheet in themes/ that sets the tokens on `:root[data-theme='<id>']`, see themes/README.md.
 
-export const THEMES = { cosy: 'Cosy', cyberpunk: 'Cyberpunk' } // id → name, in the settings' order
+// id → name, in the settings' order
+export const THEMES = {
+  cosy: 'Cosy',
+  cassette: 'Cassette',
+  festival: 'Festival',
+  concert: 'Concert hall',
+}
 export const DEFAULT_THEME = { id: 'cosy', sentAt: 0, from: '' }
 
 const MAX_NAME_LENGTH = 24
