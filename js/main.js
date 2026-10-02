@@ -1,6 +1,7 @@
 import { HISTORY_SIZE, MAX_CHAT_LENGTH, chatKey, createChat, editChat, isChat, isNewerEdit, senderColor } from './chat.js'
 import { completedShortcodeAt, replaceShortcodes, shortcodeAt, suggest } from './emoji.js'
 import { KEY_HELP_URL, checkKey, completesCommand, gifStillUrl, gifUrl, loadKey, parseGiphyCommand, saveKey, searchGifs } from './giphy.js'
+import { isAway, notify, setSound, soundOn } from './notify.js'
 import { createPassphrase, parsePassphrase } from './passphrase.js'
 import { EMPTY_QUEUE, MAX_QUEUE, isQueue, thumbnailUrl } from './queue.js'
 import { joinJukebox, randomId } from './room.js'
@@ -192,6 +193,8 @@ function receiveChat(msg) {
   if (chatLog.length > HISTORY_SIZE) chatLog = chatLog.slice(-HISTORY_SIZE)
   renderChat()
   save()
+  // Not for your own, nor for the history replayed to you when you join.
+  if (msg.from !== session.peerId && msg.sentAt > session.joinedAt && isAway()) notify()
 }
 
 function renderChat() {
@@ -832,6 +835,20 @@ function setChatMode(on) {
 
 $('toggle-layout').addEventListener('click', () => setChatMode(!views.room.classList.contains('chat-mode')))
 setChatMode(localStorage.getItem(LAYOUT_KEY) === 'chat')
+
+function renderSound() {
+  const on = soundOn()
+  const button = $('toggle-sound')
+  button.textContent = on ? '🔔' : '🔕'
+  button.title = button.ariaLabel = on ? 'Mute the new message sound' : 'Play a sound on new messages'
+  button.ariaPressed = String(on)
+}
+
+$('toggle-sound').addEventListener('click', () => {
+  setSound(!soundOn())
+  renderSound()
+})
+renderSound()
 
 $('copy-invite').addEventListener('click', (e) => copy(`${location.origin}${location.pathname}#room=${passphrase}`, e.currentTarget))
 
