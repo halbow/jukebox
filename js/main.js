@@ -183,6 +183,13 @@ function save() {
 
 let chatLog = [] // sorted by sentAt; replayed to whoever joins after us, if the room agrees (see offerHistory)
 let editing = null // the message of yours being edited, picked with ↑ in an empty input
+let notices = [] // "<name> joined / left": only seen here, never replayed nor saved: [{ notice: true, text, sentAt }]
+const leftWhileHere = new Set() // session peer ids of people who left since we came, so their comeback shows
+
+function addNotice(text) {
+  notices.push({ notice: true, text, sentAt: Date.now() })
+  renderChat()
+}
 
 function receiveChat(msg) {
   const key = chatKey(msg)
@@ -205,8 +212,13 @@ function receiveChat(msg) {
 
 function renderChat() {
   const list = $('chat-log')
+  const entries = [...chatLog, ...notices].sort((a, b) => a.sentAt - b.sentAt)
   list.replaceChildren(
-    ...chatLog.map((msg) => {
+    ...entries.map((msg) => {
+      if (msg.notice) {
+        const time = new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        return Object.assign(document.createElement('li'), { className: 'notice', textContent: `${time}: ${msg.text}` })
+      }
       const mine = msg.from === session.peerId
       const li = document.createElement('li')
       li.classList.toggle('mine', mine)
@@ -224,7 +236,7 @@ function renderChat() {
     }),
   )
   list.scrollTop = list.scrollHeight
-  $('chat-empty').hidden = chatLog.length > 0
+  $('chat-empty').hidden = entries.length > 0
 }
 
 $('chat-form').addEventListener('submit', (e) => {
@@ -683,6 +695,11 @@ async function connect() {
     // The chat history waits for their hello: it says who they are, and whether they're new.
   }
   room.onPeerLeave = (id) => {
+    const person = people.get(id)
+    if (person) {
+      leftWhileHere.add(person.from)
+      addNotice(`${person.name} left`)
+    }
     people.delete(id)
     historyAsks = historyAsks.filter((ask) => ask.id !== id)
     renderPeople()
@@ -696,7 +713,10 @@ async function connect() {
     people.set(id, person)
     renderPeople()
     if (isOverCap()) return endRoom(`The room is full: ${MAX_PEOPLE} people are already listening.`)
-    if (first) offerHistory(id, person)
+    if (!first) return
+    // Not for those already here when we came, unless they left meanwhile (e.g. a refresh).
+    if (person.joinedAt > session.joinedAt || leftWhileHere.has(person.from)) addNotice(`${person.name} joined`)
+    offerHistory(id, person)
   }
   actions.history.onMessage = (data, { peerId: id }) => {
     if (typeof data?.from !== 'string' || typeof data.share !== 'boolean') return
