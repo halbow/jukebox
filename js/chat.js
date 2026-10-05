@@ -8,9 +8,7 @@
 // type Chat = { type: 'chat', text, name, sentAt, from, editedAt?, gif? }
 
 import { isGif } from './giphy.js'
-
-export const MAX_CHAT_LENGTH = 300
-export const HISTORY_SIZE = 50 // what peers replay to someone who joins late
+import { MAX_CHAT_LENGTH, isId, isName, isTime } from './limits.js'
 
 export function isChat(msg) {
   return (
@@ -18,10 +16,10 @@ export function isChat(msg) {
     typeof msg.text === 'string' &&
     msg.text.length > 0 &&
     msg.text.length <= MAX_CHAT_LENGTH &&
-    typeof msg.name === 'string' &&
-    Number.isFinite(msg.sentAt) &&
-    typeof msg.from === 'string' &&
-    (msg.editedAt === undefined || Number.isFinite(msg.editedAt)) &&
+    isName(msg.name) &&
+    isTime(msg.sentAt) &&
+    isId(msg.from) &&
+    (msg.editedAt === undefined || isTime(msg.editedAt)) &&
     (msg.gif === undefined || isGif(msg.gif))
   )
 }

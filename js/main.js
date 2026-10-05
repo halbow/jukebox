@@ -1,697 +1,56 @@
-import { HISTORY_SIZE, MAX_CHAT_LENGTH, chatKey, createChat, editChat, isChat, isNewerEdit, senderColor } from './chat.js'
-import { completedShortcodeAt, replaceShortcodes, shortcodeAt, suggest } from './emoji.js'
-import { KEY_HELP_URL, checkKey, completesCommand, gifStillUrl, gifUrl, loadKey, parseGiphyCommand, saveKey, searchGifs } from './giphy.js'
-import { isAway, notify, setSound, soundOn } from './notify.js'
+// Boots the page: home or room from the URL, joining a room, and who comes and goes. The rest of the room
+// lives in its own modules, each wired to the peers on import (see peers.js for the messages).
+
+import { addNotice, renderChat } from './chat-log.js'
+import './chat-input.js'
+import { $, clearError, copy, setStatus, showError } from './dom.js'
+import { offerHistory } from './history.js'
+import { MAX_NAME_LENGTH, MAX_PEOPLE, cleanName } from './limits.js'
 import { createPassphrase, parsePassphrase } from './passphrase.js'
-import { EMPTY_QUEUE, MAX_QUEUE, isQueue, thumbnailUrl } from './queue.js'
-import { joinJukebox, randomId } from './room.js'
-import { Sync, expectedPosition, isNewer, isState } from './sync.js'
-import { DEFAULT_THEME, THEMES, applyTheme, isTheme } from './theme.js'
-import { PLAYER_STATE, createPlayer, currentVideoId, parseVideoId } from './youtube.js'
+import * as peers from './peers.js'
+import { hello, isOverCap, people, renderPeople } from './people.js'
+import { openSession, save, session } from './session.js'
+import { rememberName, rememberedName } from './settings.js'
+import { autoPaste, loadPlayer, onPausedLocallyChange, renderQueue, sync } from './stage.js'
+import { applyTheme } from './theme.js'
 
-const MAX_PEOPLE = 12 // you included. Soft cap: in a mesh every extra person costs everyone a connection.
-const MAX_NAME_LENGTH = 24
-const NAME_KEY = 'jukebox:name'
 const LAYOUT_KEY = 'jukebox:layout' // 'chat' when the chat is in focus, the video otherwise
-const END_TOLERANCE_S = 10 // a video only auto-advances if it ended about when the room expected it to
+const UNREACHABLE = "Couldn't connect to someone in the room. One of you may be on a strict network (mobile data, office Wi-Fi)."
 
-const $ = (id) => document.getElementById(id)
 const views = { home: $('view-home'), room: $('view-room'), ended: $('view-ended') }
 
-let player = null
-let room = null
-let actions = null // { hello, state, chat, queue, history, theme } Trystero actions
 let passphrase = null
 let creating = false // just clicked "Create a room", so the name prompt says so
-// What survives a refresh, per tab and per room: { peerId, name, joinedAt, state, chat, queue, theme, sharedWith }
-let session = null
+const leftWhileHere = new Set() // session peer ids of people who left since we came, so their comeback shows
+const unreachable = new Set() // Trystero peer ids whose connection failed and who haven't connected since
 
-const people = new Map() // Trystero peer id → { name, joinedAt, pausedLocally, from }
-
-const sync = new Sync({
-  peerId: '', // set once the session is known
-  onBroadcast: (state) => {
-    actions?.state.send(state)
-    save()
-  },
-  onNeedsGesture: () => ($('start-overlay').hidden = false),
-})
-
-// ---------- shared UI ----------
+$('guest-name').maxLength = MAX_NAME_LENGTH
 
 function show(name) {
-  for (const [key, el] of Object.entries(views)) el.hidden = key !== name
+  for (const [key, view] of Object.entries(views)) view.hidden = key !== name
   $('open-settings').hidden = name !== 'room'
 }
 
-function setStatus(text, tone) {
-  const pill = $('status')
-  pill.hidden = !text
-  pill.textContent = text
-  pill.dataset.tone = tone
-}
-
-function showError(id, message) {
-  $(id).textContent = message
-  $(id).hidden = !message
-}
-
-async function copy(text, button) {
-  try {
-    await navigator.clipboard.writeText(text)
-  } catch {
-    // Clipboard API needs a secure context; plain http on a LAN IP falls back to execCommand.
-    const area = Object.assign(document.createElement('textarea'), { value: text })
-    document.body.append(area)
-    area.select()
-    document.execCommand('copy')
-    area.remove()
-  }
-  flash(button)
-}
-
-/** A ✓ on the button for a moment. */
-function flash(button) {
-  const label = button.textContent
-  button.textContent = '✓'
-  setTimeout(() => (button.textContent = label), 1500)
-}
-
-/** Trim, collapse whitespace and cap a display name. Empty means "no name". */
-function cleanName(name) {
-  return typeof name === 'string' ? name.replace(/\s+/g, ' ').trim().slice(0, MAX_NAME_LENGTH) : ''
-}
-
-function renderNowPlaying() {
-  const playing = player?.getPlayerState() === PLAYER_STATE.PLAYING
-  $('empty-screen').hidden = Boolean(sync.state)
-  $('pause-locally').hidden = !player?.getVideoData?.()?.video_id
-  document.querySelectorAll('.vinyl').forEach((el) => el.classList.toggle('spinning', playing))
-}
-
-function enterRoom() {
-  show('room')
-  if (player) return
-  createPlayer('player', {
-    onStateChange: (playerState) => {
-      sync.onPlayerState(playerState)
-      if (playerState === PLAYER_STATE.ENDED) autoAdvance()
-      renderNowPlaying()
-    },
-  })
-    .then((p) => {
-      player = p
-      sync.attach(p)
-      renderNowPlaying()
-    })
-    .catch((err) => showError('room-error', `${err.message}. Check your connection and reload.`))
-}
-
-function endRoom(message) {
-  room?.leave()
-  room = actions = null
-  sync.stop()
-  setStatus('')
-  $('ended-message').textContent = message
-  show('ended')
-}
-
-function playVideo(videoId, options) {
-  if (sync.pausedLocally) setPausedLocally(false) // picking a video means you're back
-  sync.load(videoId, options)
-  renderNowPlaying()
-}
-
-/** Nothing to listen to: no video yet, or the room's video played to its end. */
-function isIdle() {
-  if (!sync.state) return true
-  return player?.getPlayerState() === PLAYER_STATE.ENDED && currentVideoId(player) === sync.state.videoId
-}
-
-/** If nothing is playing and the clipboard holds a YouTube link, cue it up paused. */
-async function autoPaste() {
-  if (!isIdle() || views.room.hidden || !navigator.clipboard?.readText) return
-  let text
-  try {
-    text = await navigator.clipboard.readText()
-  } catch {
-    return // permission denied or no focus: the URL input still works
-  }
-  const videoId = parseVideoId(text)
-  // A bare 11-char word would parse as an id, so only trust actual links.
-  if (!videoId || videoId === text.trim() || !isIdle() || videoId === sync.state?.videoId) return
-  playVideo(videoId, { playing: false })
-}
-
-// ---------- session (survives a refresh) ----------
-
-const sessionKey = (phrase) => `jukebox:room:${phrase}`
-
-function loadSession(phrase) {
-  try {
-    const saved = JSON.parse(sessionStorage.getItem(sessionKey(phrase)))
-    if (typeof saved?.peerId === 'string' && Number.isFinite(saved.joinedAt)) {
-      return {
-        peerId: saved.peerId,
-        name: cleanName(saved.name),
-        joinedAt: saved.joinedAt,
-        state: isState(saved.state) ? saved.state : null,
-        chat: Array.isArray(saved.chat) ? saved.chat.filter(isChat) : [],
-        queue: isQueue(saved.queue) ? saved.queue : EMPTY_QUEUE,
-        theme: isTheme(saved.theme) ? saved.theme : DEFAULT_THEME,
-        sharedWith: isSharedWith(saved.sharedWith) ? saved.sharedWith : {},
-      }
-    }
-  } catch {
-    // corrupted or missing: start fresh
-  }
-  return { peerId: randomId(), name: '', joinedAt: Date.now(), state: null, chat: [], queue: EMPTY_QUEUE, theme: DEFAULT_THEME, sharedWith: {} }
-}
-
-// session peer id → whether they get the chat history replayed
-function isSharedWith(value) {
-  return value !== null && typeof value === 'object' && Object.values(value).every((v) => typeof v === 'boolean')
-}
-
-function save() {
-  if (!session) return
-  session.state = sync.state
-  session.chat = chatLog
-  session.queue = queue
-  session.theme = theme
-  sessionStorage.setItem(sessionKey(passphrase), JSON.stringify(session))
-}
-
-// ---------- chat ----------
-
-let chatLog = [] // sorted by sentAt; replayed to whoever joins after us, if the room agrees (see offerHistory)
-let editing = null // the message of yours being edited, picked with ↑ in an empty input
-let notices = [] // "<name> joined / left": only seen here, never replayed nor saved: [{ notice: true, text, sentAt }]
-const leftWhileHere = new Set() // session peer ids of people who left since we came, so their comeback shows
-const unreachable = new Set() // Trystero peer ids whose connection failed and who haven't connected since
-const UNREACHABLE = "Couldn't connect to someone in the room. One of you may be on a strict network (mobile data, office Wi-Fi)."
-
-function addNotice(text) {
-  notices.push({ notice: true, text, sentAt: Date.now() })
-  renderChat()
-}
-
-function receiveChat(msg) {
-  const key = chatKey(msg)
-  const i = chatLog.findIndex((m) => chatKey(m) === key)
-  if (i >= 0) {
-    // History replays overlap; only a newer edit gets through, and it only changes the text.
-    if (!isNewerEdit(msg, chatLog[i])) return
-    chatLog[i] = { ...chatLog[i], text: msg.text, editedAt: msg.editedAt }
-    renderChat()
-    return save()
-  }
-  chatLog.push(msg)
-  chatLog.sort((a, b) => a.sentAt - b.sentAt)
-  if (chatLog.length > HISTORY_SIZE) chatLog = chatLog.slice(-HISTORY_SIZE)
-  renderChat()
-  save()
-  // Not for your own, nor for the history replayed to you when you join.
-  if (msg.from !== session.peerId && msg.sentAt > session.joinedAt && isAway()) notify()
-}
-
-function renderChat() {
-  const list = $('chat-log')
-  const entries = [...chatLog, ...notices].sort((a, b) => a.sentAt - b.sentAt)
-  list.replaceChildren(
-    ...entries.map((msg) => {
-      if (msg.notice) {
-        const time = new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        return Object.assign(document.createElement('li'), { className: 'notice', textContent: `${time}: ${msg.text}` })
-      }
-      const mine = msg.from === session.peerId
-      const li = document.createElement('li')
-      li.classList.toggle('mine', mine)
-      const sender = Object.assign(document.createElement('b'), { textContent: mine ? 'You' : msg.name })
-      if (!mine) sender.style.color = senderColor(msg.from)
-      if (msg.gif) {
-        // the search reads as the command it was, not as something said
-        li.append(sender, Object.assign(document.createElement('small'), { className: 'gif-query', textContent: `/giphy ${msg.text}` }))
-        li.append(gifElement(msg.gif, msg.text))
-      } else {
-        li.append(sender, msg.text)
-      }
-      if (msg.editedAt) li.append(Object.assign(document.createElement('small'), { textContent: '(edited)' }))
-      return li
-    }),
-  )
-  list.scrollTop = list.scrollHeight
-  $('chat-empty').hidden = entries.length > 0
-}
-
-$('chat-form').addEventListener('submit', (e) => {
-  e.preventDefault()
-  const input = $('chat-input')
-  const command = !editing && parseGiphyCommand(input.value)
-  if (command) {
-    input.value = ''
-    fitChatInput()
-    closeEmoji()
-    renderCommandHint()
-    if (command.key) return askGiphyKey()
-    if (!command.query) return showGiphy({ error: "Say what you're looking for, e.g. /giphy dancing cat" })
-    return searchGiphy(command.query)
-  }
-  const text = replaceShortcodes(input.value.trim()).slice(0, MAX_CHAT_LENGTH)
-  if (!text && !editing) return
-  input.value = ''
-  fitChatInput()
-  closeEmoji()
-  const edited = editing
-  stopEditing()
-  if (edited && (!text || text === edited.text)) return // emptied or unchanged: nothing to edit
-  const msg = edited ? editChat(edited, text) : createChat(text, { name: session.name, from: session.peerId })
-  receiveChat(msg)
-  actions?.chat.send(msg)
-})
-
-// A one-line message in a box that grows with it, so you see all of it while typing: Enter sends, no newlines.
-function fitChatInput() {
-  const input = $('chat-input')
-  input.style.height = 'auto'
-  input.style.height = `${input.scrollHeight + input.offsetHeight - input.clientHeight}px` // plus the borders
-}
-
-// The width changes with the window and chat mode, and so does the wrapping.
-new ResizeObserver(fitChatInput).observe($('chat-input'))
-
-function flattenLines(input) {
-  const flat = (text) => text.replace(/\r?\n|\r/g, ' ')
-  const before = flat(input.value.slice(0, input.selectionStart))
-  input.value = before + flat(input.value.slice(input.selectionStart))
-  input.setSelectionRange(before.length, before.length)
-}
-
-function startEditing() {
-  editing = chatLog.findLast((m) => m.from === session.peerId && !m.gif) // a GIF can't be edited
-  if (!editing) return
-  const input = $('chat-input')
-  input.value = editing.text
-  fitChatInput()
-  input.setSelectionRange(input.value.length, input.value.length)
-  input.scrollTop = input.scrollHeight // show the end, where the caret is
-  $('chat-form').classList.add('editing')
-  $('chat-editing').hidden = false
-  renderCommandHint()
-}
-
-function stopEditing() {
-  editing = null
-  $('chat-form').classList.remove('editing')
-  $('chat-editing').hidden = true
-}
-
-$('chat-input').addEventListener('keydown', (e) => {
-  if (emojiOpen || e.isComposing) return // the emoji list has the arrows, Enter and Escape
-  if (e.key === 'Enter') {
-    e.preventDefault()
-    $('chat-form').requestSubmit()
-  } else if (e.key === 'ArrowUp' && !e.target.value) {
-    e.preventDefault()
-    startEditing()
-  } else if (e.key === 'Escape' && editing) {
-    e.target.value = ''
-    fitChatInput()
-    stopEditing()
-  } else if (e.key === 'Escape' && giphy) {
-    closeGiphy()
-  }
-})
-
-// ---------- /giphy ----------
-
-// The private preview, only you see it: { query?, results?, index?, loading?, error?, askKey? }, or null.
-// Never in `chatLog`, never saved, never sent.
-let giphy = null
-let giphyRun = 0 // bumped by every search, key check or close, so a late answer can't reopen the preview
-
-/** A GIF for the chat log or the preview: the still frame for reduced motion, a placeholder once it's gone. */
-function gifElement({ id, width, height }, alt) {
-  const picture = Object.assign(document.createElement('picture'), { className: 'gif' })
-  const still = Object.assign(document.createElement('source'), { srcset: gifStillUrl(id), media: '(prefers-reduced-motion: reduce)' })
-  const img = Object.assign(document.createElement('img'), { src: gifUrl(id), width, height, alt, loading: 'lazy' })
-  img.addEventListener('error', () => picture.replaceChildren(Object.assign(document.createElement('small'), { textContent: 'GIF unavailable' })))
-  picture.append(still, img)
-  return picture
-}
-
-function button(label, onClick, className = 'btn small') {
-  const el = Object.assign(document.createElement('button'), { type: 'button', className, textContent: label })
-  el.addEventListener('click', onClick)
-  return el
-}
-
-function showGiphy(preview) {
-  giphy = preview
-  renderGiphy()
-}
-
-function closeGiphy() {
-  giphyRun++
-  giphy = null
-  renderGiphy()
-}
-
-function renderGiphy() {
-  const box = $('giphy-preview')
-  box.hidden = !giphy
-  if (!giphy) return box.replaceChildren()
-  const { query, results, index, loading, error, askKey } = giphy
-  const hint = (text) => Object.assign(document.createElement('p'), { className: 'hint', textContent: text })
-  const cancel = button('Cancel', closeGiphy)
-
-  if (askKey) return box.replaceChildren(...keyForm(), ...(error ? [errorLine(error)] : []))
-  if (loading) return box.replaceChildren(hint(query ? `Searching Giphy for “${query}”…` : 'Checking your key…'))
-  if (error) return box.replaceChildren(errorLine(error), actionsRow(cancel))
-  if (!results.length) return box.replaceChildren(hint(`No GIFs for “${query}”.`), actionsRow(cancel))
-  box.replaceChildren(
-    hint(`Only you can see this · “${query}”`),
-    gifElement(results[index], query),
-    actionsRow(
-      button('Send', sendGiphy, 'btn small primary'),
-      ...(results.length > 1 ? [button('Shuffle', shuffleGiphy)] : []),
-      cancel,
-      Object.assign(document.createElement('small'), { className: 'powered', textContent: 'Powered by GIPHY' }),
-    ),
-  )
-}
-
-function actionsRow(...children) {
-  const row = Object.assign(document.createElement('div'), { className: 'giphy-actions' })
-  row.append(...children)
-  return row
-}
-
-function errorLine(text) {
-  return Object.assign(document.createElement('p'), { className: 'error', textContent: text })
-}
-
-function keyForm() {
-  const intro = Object.assign(document.createElement('p'), { className: 'hint' })
-  const link = Object.assign(document.createElement('a'), { href: KEY_HELP_URL, target: '_blank', rel: 'noopener', textContent: 'Get a free one' })
-  intro.append('/giphy needs your own Giphy API key, it stays in this browser. ', link, ' (Create an App → API).')
-  const form = Object.assign(document.createElement('form'), { className: 'giphy-actions' })
-  const input = Object.assign(document.createElement('input'), { type: 'text', placeholder: 'Giphy API key', value: loadKey(), autocomplete: 'off', spellcheck: false })
-  input.addEventListener('keydown', (e) => e.key === 'Escape' && closeGiphy())
-  form.append(input, Object.assign(document.createElement('button'), { className: 'btn small primary', textContent: 'Save' }))
-  if (loadKey()) {
-    form.append(
-      button('Remove', () => {
-        saveKey('')
-        closeGiphy()
-      }),
-    )
-  }
-  form.append(button('Cancel', closeGiphy))
-  form.addEventListener('submit', (e) => {
-    e.preventDefault()
-    const key = input.value.trim()
-    if (key) saveGiphyKey(key)
-  })
-  queueMicrotask(() => input.focus())
-  return [intro, form]
-}
-
-/** `/giphy key`, or a search without a (working) key: `query` runs once the key is saved. */
-function askGiphyKey({ query, error } = {}) {
-  giphyRun++
-  showGiphy({ askKey: true, query, error })
-}
-
-async function saveGiphyKey(key) {
-  const run = ++giphyRun
-  const { query } = giphy
-  showGiphy({ loading: true })
-  try {
-    await checkKey(key)
-  } catch (err) {
-    if (run === giphyRun) askGiphyKey({ query, error: err.message })
-    return
-  }
-  if (run !== giphyRun) return
-  saveKey(key)
-  if (query) searchGiphy(query)
-  else closeGiphy()
-}
-
-async function searchGiphy(query) {
-  const key = loadKey()
-  if (!key) return askGiphyKey({ query })
-  const run = ++giphyRun
-  showGiphy({ query, loading: true })
-  try {
-    const results = await searchGifs(key, query)
-    if (run === giphyRun) showGiphy({ query, results, index: 0 })
-  } catch (err) {
-    if (run !== giphyRun) return
-    if (err.badKey) askGiphyKey({ query, error: err.message })
-    else showGiphy({ query, error: err.message })
-  }
-}
-
-function shuffleGiphy() {
-  const { results, index } = giphy
-  const next = (index + 1 + Math.floor(Math.random() * (results.length - 1))) % results.length // never the same one
-  showGiphy({ ...giphy, index: next })
-}
-
-function sendGiphy() {
-  const { query, results, index } = giphy
-  closeGiphy()
-  const msg = createChat(query.slice(0, MAX_CHAT_LENGTH), { name: session.name, from: session.peerId, gif: results[index] })
-  receiveChat(msg)
-  actions?.chat.send(msg)
-  $('chat-input').focus()
-}
-
-// ---------- emoji ----------
-
-let emojiOpen = null // { start, suggestions, selected } while the `:` (or `/`) list is showing
-
-function closeEmoji() {
-  emojiOpen = null
-  $('emoji-suggestions').hidden = true
-  $('chat-input').setAttribute('aria-expanded', 'false')
-}
-
-function renderEmoji() {
-  const list = $('emoji-suggestions')
-  list.replaceChildren(
-    ...emojiOpen.suggestions.map(({ icon, label, detail }, i) => {
-      const li = document.createElement('li')
-      li.role = 'option'
-      li.ariaSelected = String(i === emojiOpen.selected)
-      li.append(Object.assign(document.createElement('span'), { textContent: icon }), label)
-      if (detail) li.append(Object.assign(document.createElement('small'), { textContent: detail }))
-      // mousedown, not click: keeps the focus (and the caret) in the input
-      li.addEventListener('mousedown', (e) => {
-        e.preventDefault()
-        pickEmoji(i)
-      })
-      return li
-    }),
-  )
-  list.hidden = false
-  $('chat-input').setAttribute('aria-expanded', 'true')
-  list.children[emojiOpen.selected]?.scrollIntoView({ block: 'nearest' })
-}
-
-function pickEmoji(i) {
-  const input = $('chat-input')
-  input.setRangeText(emojiOpen.suggestions[i].insert, emojiOpen.start, input.selectionStart, 'end')
-  fitChatInput()
-  closeEmoji()
-  renderCommandHint()
-}
-
-const GIPHY_SUGGESTION = { icon: '🎞️', label: '/giphy', detail: '[search] · send a GIF', insert: '/giphy ' }
-
-function suggestionsAt(input) {
-  if (!editing && completesCommand(input.value)) return { start: 0, suggestions: [GIPHY_SUGGESTION] }
-  const typing = shortcodeAt(input.value, input.selectionStart)
-  const found = typing ? suggest(typing.query) : []
-  const suggestions = found.map(({ name, emoji }) => ({ icon: emoji, label: `:${name}:`, insert: emoji + ' ' }))
-  return { start: typing?.start, suggestions }
-}
-
-// While a `/giphy …` is typed, say it's a command and what Enter will do.
-function renderCommandHint() {
-  const command = !editing && parseGiphyCommand($('chat-input').value)
-  $('chat-form').classList.toggle('command', !!command)
-  $('chat-command').hidden = !command
-  if (!command) return
-  $('chat-command').textContent = command.key
-    ? '/giphy · Enter to change your Giphy key'
-    : command.query
-      ? `/giphy · Enter to search Giphy for “${command.query}”`
-      : '/giphy · type what you’re looking for'
-}
-
-$('chat-input').addEventListener('input', (e) => {
-  const input = e.target
-  if (/[\r\n]/.test(input.value)) flattenLines(input) // pasted lines
-  const done = completedShortcodeAt(input.value, input.selectionStart)
-  if (done) input.setRangeText(done.emoji, done.start, done.end, 'end')
-  fitChatInput()
-  renderCommandHint()
-  const { start, suggestions } = suggestionsAt(input)
-  if (!suggestions.length) return closeEmoji()
-  emojiOpen = { start, suggestions, selected: 0 }
-  renderEmoji()
-})
-
-$('chat-input').addEventListener('keydown', (e) => {
-  if (!emojiOpen || e.isComposing) return
-  const count = emojiOpen.suggestions.length
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-    e.preventDefault()
-    emojiOpen.selected = (emojiOpen.selected + (e.key === 'ArrowDown' ? 1 : -1) + count) % count
-    renderEmoji()
-  } else if (e.key === 'Enter' || e.key === 'Tab') {
-    e.preventDefault() // pick it, don't send the message
-    pickEmoji(emojiOpen.selected)
-  } else if (e.key === 'Escape') {
-    closeEmoji()
-  }
-})
-
-$('chat-input').addEventListener('blur', closeEmoji)
-
-/** The video in the link input, or null after shaking it. Clears the input on success. */
-function takeVideoInput() {
-  const input = $('video-url')
-  const videoId = parseVideoId(input.value)
-  if (!videoId) {
-    input.classList.remove('shake')
-    void input.offsetWidth // restart the animation
-    input.classList.add('shake')
-    return null
-  }
-  input.value = ''
-  return videoId
-}
-
-$('video-form').addEventListener('submit', (e) => {
-  e.preventDefault()
-  const videoId = takeVideoInput()
-  if (videoId) playVideo(videoId)
-})
-
-$('queue-video').addEventListener('click', () => {
-  const videoId = takeVideoInput()
-  if (!videoId) return
-  if (isIdle()) return playVideo(videoId) // nothing to wait for
-  if (queue.items.length >= MAX_QUEUE) return showError('room-error', `The queue is full (${MAX_QUEUE} videos).`)
-  showError('room-error', '')
-  setQueue([...queue.items, { id: randomId(), videoId, addedBy: session.name, from: session.peerId }])
-  $('video-url').focus()
-})
-
-// ---------- queue ----------
-
-let queue = EMPTY_QUEUE
-
-function setQueue(items) {
-  queue = { items, sentAt: Date.now(), from: session.peerId }
-  actions?.queue.send(queue)
-  renderQueue()
-  save()
-}
-
-/** Plays a queued video now and takes it out of the queue. */
-function playFromQueue(id) {
-  const item = queue.items.find((it) => it.id === id)
-  if (!item) return
-  setQueue(queue.items.filter((it) => it !== item))
-  playVideo(item.videoId)
-}
-
-/**
- * Every peer sees the video end at about the same time. Only advance if the room is still on it,
- * and if it ended about when expected: a peer back from a refresh restores an old state past
- * the video's end, and must not skip the room ahead before it hears where the room is.
- */
-function autoAdvance() {
-  const { state } = sync
-  if (!queue.items.length || !state?.playing || sync.pausedLocally) return
-  if (currentVideoId(player) !== state.videoId) return
-  if (Math.abs(expectedPosition(state) - player.getDuration()) > END_TOLERANCE_S) return
-  playFromQueue(queue.items[0].id)
-}
-
-function renderQueue() {
-  $('queue-title').hidden = !queue.items.length
-  $('queue-count').textContent = queue.items.length
-  $('queue-list').replaceChildren(
-    ...queue.items.map((item) => {
-      const li = document.createElement('li')
-      const play = Object.assign(document.createElement('button'), { type: 'button', className: 'queue-play', title: 'Play it now' })
-      const thumb = Object.assign(document.createElement('img'), { src: thumbnailUrl(item.videoId), alt: '', loading: 'lazy', width: 160, height: 90 })
-      const by = item.from === session.peerId ? 'you' : item.addedBy || 'Friend'
-      play.append(thumb, Object.assign(document.createElement('small'), { textContent: `Added by ${by}` }))
-      play.addEventListener('click', () => playFromQueue(item.id))
-      const remove = button('✕', () => setQueue(queue.items.filter((it) => it.id !== item.id)), 'icon-btn queue-remove')
-      remove.title = remove.ariaLabel = 'Remove from the queue'
-      li.append(play, remove)
-      return li
-    }),
-  )
-}
-
-$('next-video').addEventListener('click', () => queue.items.length && playFromQueue(queue.items[0].id))
-
-function setPausedLocally(paused) {
-  if (paused) sync.pauseLocally()
-  else sync.resumeLocally()
-  $('rejoin-overlay').hidden = !paused
-  $('pause-locally').disabled = paused
-  actions?.hello.send(hello()) // so the others see the ⏸ next to your name
-  renderPeople()
-  renderNowPlaying()
-}
-
-$('pause-locally').addEventListener('click', () => setPausedLocally(true))
-$('rejoin-overlay').addEventListener('click', () => setPausedLocally(false))
-
-$('start-overlay').addEventListener('click', () => {
-  $('start-overlay').hidden = true
-  sync.start()
-  autoPaste() // by now we have the room's state, if there is one
-})
-
-addEventListener('focus', autoPaste) // e.g. back from copying a link in another tab
-
 // ---------- home ----------
-
-function goToRoom(phrase) {
-  location.hash = `room=${phrase}` // the hashchange handler takes it from here
-}
 
 $('create-room').addEventListener('click', () => {
   creating = true
-  goToRoom(createPassphrase())
+  location.hash = `room=${createPassphrase()}` // the hashchange handler takes it from here
 })
 
 // ---------- room ----------
 
 async function openRoom(phrase) {
   passphrase = phrase
-  session = loadSession(phrase)
+  openSession(phrase)
   sync.peerId = session.peerId
-  chatLog = session.chat
-  queue = session.queue
-  theme = session.theme
-  applyTheme(theme.id)
+  applyTheme(session.theme.id)
   renderChat()
   renderQueue()
 
   if (session.state) sync.receive(session.state) // resumes where it was, `expectedPosition` covers the gap
-  enterRoom() // behind the name prompt, so the player loads while you type
+  show('room')
+  loadPlayer() // behind the name prompt, so the player loads while you type
   renderPeople()
 
   if (!session.name) session.name = await askName()
@@ -703,190 +62,12 @@ async function openRoom(phrase) {
   connect()
 }
 
-async function connect() {
-  try {
-    room = await joinJukebox(passphrase, {
-      onJoinError: ({ error, peerId: id }) => {
-        console.warn('jukebox: join error', error)
-        // Trystero keeps retrying: a failed attempt doesn't matter if another one got through.
-        if (room && id in room.getPeers()) return
-        unreachable.add(id)
-        showError('room-error', UNREACHABLE)
-      },
-    })
-  } catch (err) {
-    return showError('room-error', `Couldn't reach the relays (${err.message}). Check your connection and reload.`)
-  }
-  actions = {
-    hello: room.makeAction('hello'),
-    state: room.makeAction('state'),
-    chat: room.makeAction('chat'),
-    queue: room.makeAction('queue'),
-    history: room.makeAction('history'),
-    theme: room.makeAction('theme'),
-  }
-  connectedAt = Date.now()
-
-  room.onPeerJoin = (id) => {
-    unreachable.delete(id)
-    if (!unreachable.size && $('room-error').textContent === UNREACHABLE) showError('room-error', '')
-    const target = { target: id }
-    actions.hello.send(hello(), target)
-    if (sync.state) actions.state.send(sync.state, target)
-    if (queue.sentAt) actions.queue.send(queue, target)
-    if (theme.sentAt) actions.theme.send(theme, target)
-    // The chat history waits for their hello: it says who they are, and whether they're new.
-  }
-  room.onPeerLeave = (id) => {
-    const person = people.get(id)
-    if (person) {
-      leftWhileHere.add(person.from)
-      addNotice(`${person.name} left`)
-    }
-    people.delete(id)
-    historyAsks = historyAsks.filter((ask) => ask.id !== id)
-    renderPeople()
-    renderHistoryAsks()
-  }
-
-  actions.hello.onMessage = (data, { peerId: id }) => {
-    if (!Number.isFinite(data?.joinedAt) || typeof data.from !== 'string') return
-    const first = !people.has(id) // hello is resent on every ⏸ change
-    const person = { name: cleanName(data.name) || 'Friend', joinedAt: data.joinedAt, pausedLocally: data.pausedLocally === true, from: data.from }
-    people.set(id, person)
-    renderPeople()
-    if (isOverCap()) return endRoom(`The room is full: ${MAX_PEOPLE} people are already listening.`)
-    if (!first) return
-    // Not for those already here when we came, unless they left meanwhile (e.g. a refresh).
-    if (person.joinedAt > session.joinedAt || leftWhileHere.has(person.from)) addNotice(`${person.name} joined`)
-    offerHistory(id, person)
-  }
-  actions.history.onMessage = (data, { peerId: id }) => {
-    if (typeof data?.from !== 'string' || typeof data.share !== 'boolean') return
-    if (people.get(id)?.from === data.from) return // nobody answers for themselves
-    if (data.from in session.sharedWith) return // already settled here
-    settleHistory(data.from, data.share)
-  }
-  actions.state.onMessage = (state, { peerId: id }) => {
-    if (!isState(state)) return
-    if (sync.state && !isNewer(state, sync.state)) {
-      // Stale (e.g. restored after a refresh while the room moved on): bring them up to date.
-      if (isNewer(sync.state, state)) actions.state.send(sync.state, { target: id })
-      return
-    }
-    sync.receive(state)
-    renderNowPlaying()
-    save()
-  }
-  actions.chat.onMessage = (msg) => isChat(msg) && receiveChat(msg)
-  actions.queue.onMessage = (msg, { peerId: id }) => {
-    if (!isQueue(msg)) return
-    if (!isNewer(msg, queue)) {
-      if (isNewer(queue, msg)) actions.queue.send(queue, { target: id }) // stale: bring them up to date
-      return
-    }
-    queue = msg
-    renderQueue()
-    save()
-  }
-  actions.theme.onMessage = (msg, { peerId: id }) => {
-    if (!isTheme(msg)) return
-    if (!isNewer(msg, theme)) {
-      if (isNewer(theme, msg)) actions.theme.send(theme, { target: id }) // stale: bring them up to date
-      return
-    }
-    // Only a change made while we're here gets a line, not the room's theme handed to us on arrival.
-    if (msg.sentAt > connectedAt && msg.id !== theme.id) addNotice(`${cleanName(msg.by) || 'Someone'} switched the theme to ${THEMES[msg.id]}`)
-    receiveTheme(msg)
-  }
-}
-
-function hello() {
-  return { name: session.name, joinedAt: session.joinedAt, pausedLocally: sync.pausedLocally, from: session.peerId }
-}
-
-// ---------- chat history for newcomers ----------
-
-let historyAsks = [] // newcomers waiting for someone here to answer: [{ id, from, name }]
-
-/**
- * Someone new only gets the chat history once someone in the room says yes. Everyone is asked and the first
- * answer settles it for all. People who were here before us, or come back after a refresh, get it as before.
- */
-function offerHistory(id, { from, name, joinedAt }) {
-  if (!(from in session.sharedWith)) {
-    if (chatLog.length && joinedAt > session.joinedAt) {
-      historyAsks.push({ id, from, name })
-      return renderHistoryAsks()
-    }
-    session.sharedWith[from] = true // nothing to hide: they were here first, or there's no history yet
-    save()
-  }
-  if (session.sharedWith[from]) sendHistory(id)
-}
-
-function answerHistory(from, share) {
-  settleHistory(from, share)
-  actions?.history.send({ from, share })
-}
-
-function settleHistory(from, share) {
-  session.sharedWith[from] = share
-  save()
-  historyAsks = historyAsks.filter((ask) => ask.from !== from)
-  renderHistoryAsks()
-  if (!share) return
-  // Every peer replays what it has, as before: chatKey deduplicates.
-  for (const [id, person] of people) if (person.from === from) sendHistory(id)
-}
-
-function sendHistory(id) {
-  for (const msg of chatLog) actions?.chat.send(msg, { target: id })
-}
-
-function renderHistoryAsks() {
-  $('history-asks').replaceChildren(
-    ...historyAsks.map(({ from, name }) => {
-      const box = Object.assign(document.createElement('div'), { className: 'history-ask' })
-      const text = `${name} just joined. Share the chat history with them?`
-      box.append(
-        Object.assign(document.createElement('p'), { className: 'hint', textContent: text }),
-        actionsRow(button('Share', () => answerHistory(from, true), 'btn small primary'), button("Don't share", () => answerHistory(from, false))),
-      )
-      return box
-    }),
-  )
-}
-
-/** Whoever arrived after the first MAX_PEOPLE leaves. Older members stay, even after a refresh. */
-function isOverCap() {
-  const before = [...people.values()].filter((p) => p.joinedAt < session.joinedAt).length
-  return before >= MAX_PEOPLE
-}
-
-function renderPeople() {
-  const others = [...people.values()].sort((a, b) => a.joinedAt - b.joinedAt)
-  $('people').replaceChildren(
-    ...[{ name: 'You', pausedLocally: sync.pausedLocally }, ...others].map(({ name, pausedLocally }) => {
-      const li = Object.assign(document.createElement('li'), { textContent: name })
-      if (pausedLocally) {
-        li.classList.add('paused')
-        li.title = 'Paused for themselves, not listening right now'
-      }
-      return li
-    }),
-  )
-  const count = others.length + 1
-  $('people-count').textContent = `${count}/${MAX_PEOPLE}`
-  setStatus(others.length ? `In the room · ${count}` : 'Waiting for friends…', others.length ? 'ok' : '')
-}
-
 /** Resolves with the name the user submits, remembered for next time. */
 function askName() {
   $('name-modal').hidden = false
   $('join-title').textContent = creating ? 'Your room is ready 🎶' : "You're invited 🎶"
   const input = $('guest-name')
-  input.value = localStorage.getItem(NAME_KEY) ?? ''
+  input.value = rememberedName()
   input.focus()
   return new Promise((resolve) => {
     $('name-form').addEventListener('submit', function onSubmit(e) {
@@ -895,134 +76,112 @@ function askName() {
       if (!name) return
       $('name-form').removeEventListener('submit', onSubmit)
       $('name-modal').hidden = true
-      localStorage.setItem(NAME_KEY, name)
+      rememberName(name)
       resolve(name)
     })
   })
 }
 
-// ---------- theme ----------
-
-let theme = DEFAULT_THEME
-let connectedAt = Infinity // when we joined the mesh: themes picked after that are announced in the chat
-
-function receiveTheme(msg) {
-  theme = msg
-  applyTheme(theme.id)
-  $('settings-theme').value = theme.id
-  save()
-}
-
-function setTheme(id) {
-  if (id === theme.id) return
-  receiveTheme({ id, by: session.name, sentAt: Date.now(), from: session.peerId })
-  actions?.theme.send(theme)
-  addNotice(`You switched the theme to ${THEMES[id]}`)
-}
-
-$('settings-theme').append(...Object.entries(THEMES).map(([id, name]) => new Option(name, id)))
-$('settings-theme').addEventListener('change', (e) => setTheme(e.target.value))
-
-// ---------- settings ----------
-
-function openSettings() {
-  $('settings-name-input').value = session.name
-  $('settings-theme').value = theme.id
-  $('settings-sound').checked = soundOn()
-  $('settings-giphy-input').value = loadKey()
-  $('settings-giphy-remove').hidden = !loadKey()
-  showError('settings-error', '')
-  $('settings-modal').hidden = false
-}
-
-function closeSettings() {
-  $('settings-modal').hidden = true
-}
-
-$('open-settings').addEventListener('click', openSettings)
-$('close-settings').addEventListener('click', closeSettings)
-$('settings-modal').addEventListener('click', (e) => e.target === e.currentTarget && closeSettings())
-$('settings-modal').addEventListener('keydown', (e) => e.key === 'Escape' && closeSettings())
-
-$('settings-name').addEventListener('submit', (e) => {
-  e.preventDefault()
-  const name = cleanName($('settings-name-input').value)
-  if (!name) return
-  session.name = name
-  localStorage.setItem(NAME_KEY, name)
-  save()
-  actions?.hello.send(hello()) // the others' people lists pick it up; past messages keep the old name
-  flash(e.submitter)
-})
-
-$('settings-sound').addEventListener('change', (e) => setSound(e.target.checked))
-
-$('settings-giphy').addEventListener('submit', async (e) => {
-  e.preventDefault()
-  const key = $('settings-giphy-input').value.trim()
-  if (!key) return
-  showError('settings-error', '')
+async function connect() {
   try {
-    await checkKey(key)
+    await peers.connect(passphrase, {
+      onUnreachable: (peerId) => {
+        unreachable.add(peerId)
+        showError('room-error', UNREACHABLE, 'unreachable')
+      },
+    })
   } catch (err) {
-    return showError('settings-error', err.message)
+    showError('room-error', `Couldn't reach the relays (${err.message}). Check your connection and reload.`, 'relays')
   }
-  saveKey(key)
-  $('settings-giphy-remove').hidden = false
-  flash(e.submitter)
+}
+
+function endRoom(message) {
+  peers.leave()
+  sync.stop()
+  setStatus('')
+  $('ended-message').textContent = message
+  show('ended')
+}
+
+// ---------- who comes and goes ----------
+
+peers.onPeerJoin((peerId) => {
+  unreachable.delete(peerId)
+  if (!unreachable.size) clearError('room-error', 'unreachable')
+  peers.send('hello', hello(), peerId)
+  // The chat history waits for their hello: it says who they are, and whether they're new.
 })
 
-$('settings-giphy-remove').addEventListener('click', () => {
-  saveKey('')
-  $('settings-giphy-input').value = ''
-  $('settings-giphy-remove').hidden = true
+peers.onPeerLeave((peerId) => {
+  const person = people.get(peerId)
+  if (person) {
+    leftWhileHere.add(person.from)
+    addNotice(`${person.name} left`)
+  }
+  people.delete(peerId)
+  renderPeople()
 })
+
+peers.on('hello', (msg, peerId) => {
+  const first = !people.has(peerId) // hello is resent on every change
+  const person = { name: cleanName(msg.name) || 'Friend', joinedAt: msg.joinedAt, pausedLocally: msg.pausedLocally, from: msg.from }
+  people.set(peerId, person)
+  renderPeople()
+  if (isOverCap()) return endRoom(`The room is full: ${MAX_PEOPLE} people are already listening.`)
+  if (!first) return
+  // Not for those already here when we came, unless they left meanwhile (e.g. a refresh).
+  if (person.joinedAt > session.joinedAt || leftWhileHere.has(person.from)) addNotice(`${person.name} joined`)
+  offerHistory(peerId, person)
+})
+
+// So the others see the ⏸ next to your name.
+onPausedLocallyChange(() => {
+  peers.send('hello', hello())
+  renderPeople()
+})
+
+$('copy-invite').addEventListener('click', (e) => copy(`${location.origin}${location.pathname}#room=${passphrase}`, e.currentTarget))
 
 // ---------- layout ----------
 
 function setChatMode(on) {
   views.room.classList.toggle('chat-mode', on)
-  const button = $('toggle-layout')
-  button.textContent = on ? '📺' : '💬'
-  button.title = button.ariaLabel = on ? 'Focus on the video' : 'Focus on the chat'
-  button.ariaPressed = String(on)
+  const toggle = $('toggle-layout')
+  toggle.textContent = on ? '📺' : '💬'
+  toggle.title = toggle.ariaLabel = on ? 'Focus on the video' : 'Focus on the chat'
+  toggle.ariaPressed = String(on)
   localStorage.setItem(LAYOUT_KEY, on ? 'chat' : 'video')
 }
 
 $('toggle-layout').addEventListener('click', () => setChatMode(!views.room.classList.contains('chat-mode')))
 setChatMode(localStorage.getItem(LAYOUT_KEY) === 'chat')
 
-$('copy-invite').addEventListener('click', (e) => copy(`${location.origin}${location.pathname}#room=${passphrase}`, e.currentTarget))
-
 // ---------- boot ----------
 
 addEventListener('pagehide', () => {
   save()
-  room?.leave()
+  peers.leave()
 })
 
 function hashRoom() {
   return new URLSearchParams(location.hash.slice(1)).get('room')
 }
 
-function hashPassphrase() {
-  return parsePassphrase(hashRoom())
-}
-
 addEventListener('hashchange', () => {
-  const phrase = hashPassphrase()
+  const phrase = parsePassphrase(hashRoom())
   if (!phrase || phrase === passphrase) return
   if (passphrase) return location.reload() // switching rooms: start from a clean page
   openRoom(phrase)
 })
 
+const phrase = parsePassphrase(hashRoom())
 if (location.protocol === 'file:') {
   show('home')
   $('create-room').disabled = true
   showError('home-error', 'jukebox needs to be served over http(s). Run `npx serve` in this folder and open the URL it prints.')
-} else if (hashPassphrase()) {
-  openRoom(hashPassphrase())
+} else if (phrase) {
+  openRoom(phrase)
 } else {
   show('home')
-  if (hashRoom()) showError('home-error', "This invite link is broken or too old. Ask for a new one.")
+  if (hashRoom()) showError('home-error', 'This invite link is broken or too old. Ask for a new one.')
 }

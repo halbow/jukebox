@@ -15,6 +15,7 @@ body {
   color: var(--text);
   background: var(--backdrop);
   color-scheme: var(--scheme);
+  --room-width: 1560px; /* see the room's layout below */
 }
 
 h1,
@@ -75,10 +76,6 @@ main {
 }
 
 /* In a room the top bar lines up with the room's edges, so it shares the room's width (plus main's padding). */
-body {
-  --room-width: 1560px;
-}
-
 body:has(#view-room:not([hidden])) .topbar {
   max-width: calc(var(--room-width) + 56px);
   margin: 0 auto;
@@ -249,6 +246,21 @@ body:has(#view-room:not([hidden])) .topbar {
   font-size: 0.85rem;
 }
 
+.icon-btn {
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ok);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.icon-btn:hover {
+  background: var(--hover);
+}
+
 input,
 textarea,
 select {
@@ -368,7 +380,6 @@ select:focus {
   flex-shrink: 0;
 }
 
-/* Up next: a strip of thumbnails that scrolls sideways, so a long queue never pushes the page down. */
 /* Under the link: Up next and Play next on the left, Pause for me on the right. */
 .queue-bar {
   display: flex;
@@ -385,6 +396,12 @@ select:focus {
   margin: 0;
 }
 
+.count {
+  margin-left: auto;
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .queue-bar .count {
   margin-left: 0;
 }
@@ -393,6 +410,7 @@ select:focus {
   margin-left: auto;
 }
 
+/* Up next: a strip of thumbnails that scrolls sideways, so a long queue never pushes the page down. */
 .queue-list {
   display: flex;
   gap: 12px;
@@ -467,10 +485,10 @@ select:focus {
   position: absolute;
   top: 4px;
   right: 4px;
-  background: color-mix(in srgb, var(--bg) 85%, transparent);
-  color: var(--text);
   font-size: 0.8rem;
 }
+
+/* ---------- chat card ---------- */
 
 /* Who's in the room tops the chat card, names as chips so a full room still fits in a few lines. */
 .room-people {
@@ -499,49 +517,6 @@ select:focus {
   color: var(--muted);
 }
 
-/* ---------- settings ---------- */
-
-.settings h2 {
-  margin-top: 0;
-}
-
-.setting {
-  margin: 0 0 20px;
-}
-
-.setting > label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
-.setting .name-row input {
-  flex: 1;
-  min-width: 0;
-}
-
-.setting .hint {
-  margin-top: 6px;
-}
-
-.switch {
-  display: flex !important;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.switch input {
-  accent-color: var(--accent);
-  width: 18px;
-  height: 18px;
-}
-
-.settings-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
 /* "Not listening right now": a small ⏸ after the name, text style so it stays muted. */
 .people li.paused::after {
   content: '⏸\FE0E';
@@ -549,33 +524,11 @@ select:focus {
   font-size: 0.75rem;
 }
 
-.icon-btn {
-  padding: 2px 6px;
-  border: 0;
-  border-radius: 8px;
-  background: none;
-  color: var(--ok);
-  font: inherit;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.icon-btn:hover {
-  background: var(--hover);
-}
-
 .layout-toggle {
   margin-left: auto;
 }
 
-.count {
-  margin-left: auto;
-  color: var(--accent);
-  font-weight: 600;
-}
-
-/* The scrollbar hugs the card's right edge, in its padding, rather than eating into the narrow message column,
-   and drops the track so only a faint thumb shows. */
+/* The scrollbar hugs the card's right edge, in its padding, rather than eating into the narrow message column. */
 .chat-log {
   list-style: none;
   margin: 0 -20px 12px 0;
@@ -583,6 +536,11 @@ select:focus {
   max-height: 280px;
   overflow-y: auto;
   scrollbar-gutter: stable;
+}
+
+/* No track, only a faint thumb. */
+.chat-log,
+.chat-form textarea {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--text) 20%, transparent) transparent;
 }
@@ -652,8 +610,6 @@ select:focus {
   resize: none;
   max-height: calc(5lh + 22px);
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--text) 20%, transparent) transparent;
 }
 
 /* The `:` emoji list floats above the chat input, like Slack's. */
@@ -755,7 +711,8 @@ select:focus {
   color: var(--accent);
 }
 
-.giphy-actions {
+/* A row of buttons under a prompt (the /giphy preview, the history question). */
+.actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -763,16 +720,59 @@ select:focus {
   margin-top: 8px;
 }
 
-.giphy-actions input {
+.actions input {
   flex: 1;
   min-width: 0;
 }
 
-.giphy-actions .powered {
+.actions .powered {
   margin-left: auto;
   color: var(--muted);
   font-size: 0.75em;
   letter-spacing: 0.05em;
+}
+
+/* ---------- settings ---------- */
+
+.settings h2 {
+  margin-top: 0;
+}
+
+.setting {
+  margin: 0 0 20px;
+}
+
+.setting > label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.setting .name-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.setting .hint {
+  margin-top: 6px;
+}
+
+.switch {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.switch input {
+  accent-color: var(--accent);
+  width: 18px;
+  height: 18px;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* ---------- vinyl ---------- */

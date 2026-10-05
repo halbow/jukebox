@@ -3,6 +3,7 @@
 //
 // type State = { videoId, playing, position /* s, at sentAt */, sentAt /* sender Date.now() */, from }
 
+import { isId, isTime } from './limits.js'
 import { PLAYER_STATE, currentVideoId, isVideoId } from './youtube.js'
 
 const { UNSTARTED, PLAYING, PAUSED, BUFFERING, CUED } = PLAYER_STATE
@@ -23,14 +24,9 @@ export function isState(msg) {
     isVideoId(msg?.videoId) &&
     typeof msg.playing === 'boolean' &&
     Number.isFinite(msg.position) &&
-    Number.isFinite(msg.sentAt) &&
-    typeof msg.from === 'string'
+    isTime(msg.sentAt) &&
+    isId(msg.from)
   )
-}
-
-/** No host to arbitrate: every peer keeps the last `sentAt`, ties broken by peer id, so all converge. */
-export function isNewer(a, b) {
-  return a.sentAt > b.sentAt || (a.sentAt === b.sentAt && a.from > b.from)
 }
 
 export function expectedPosition(state, now = Date.now()) {

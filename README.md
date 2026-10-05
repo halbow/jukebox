@@ -22,14 +22,34 @@ Open the printed URL (it must be http(s), not `file://`).
 
 ## Code
 
-- `js/room.js`: joins a Trystero (Nostr) room, with the passphrase as room id and password
-- `js/passphrase.js`: random passphrases from the EFF short wordlist
+No build step: plain ES modules, loaded as they are. Trystero and gemoji come from a CDN, pinned by hash in `index.html`'s import map.
+
+Peers and data, no DOM:
+
+- `js/peers.js`: everything peers say to each other: joins the Trystero (Nostr) room, one channel per message type, drops malformed messages, and `shareNewest` for values the room shares (last `sentAt` wins)
+- `js/limits.js`: the size limits (names, chat, queue, room) and the checks for the fields every message shares
+- `js/session.js`: what survives a refresh, per tab and per room, in `sessionStorage`
 - `js/sync.js`: keeps the player in line with the shared `State` (echo guard, drift, seek detection)
-- `js/youtube.js`: IFrame Player API loader and URL parsing
 - `js/chat.js`: chat message shape, validation, dedup key and edits
-- `js/giphy.js`: `/giphy` command, Giphy search with your own key, GIF validation and URLs
+- `js/queue.js`: the Up next list's shape and validation
+- `js/theme.js`: the list of themes, validation, applying one
+- `js/giphy.js`: `/giphy` command parsing, Giphy search with your own key, GIF validation and URLs
+- `js/emoji.js`: `:shortcode:` lookup and suggestions (gemoji)
+- `js/youtube.js`: IFrame Player API loader and URL parsing
+- `js/passphrase.js`: random passphrases from the EFF short wordlist
+
+UI, each module wiring itself to the page and the peers on import:
+
+- `js/main.js`: boots the page (home or room), joins the room, `hello` and who comes and goes, layout toggle
+- `js/stage.js`: the player, the link form, Up next and Pause for me
+- `js/people.js`: the people list and your `hello`
+- `js/chat-log.js`: the chat log: messages, join/leave notices, GIFs
+- `js/chat-input.js`: the chat input: sending, editing, emoji and `/giphy` commands
+- `js/suggestions.js`: the emoji / command list above the chat input
+- `js/giphy-ui.js`: the private `/giphy` preview and the key prompt
+- `js/history.js`: asking the room before replaying the chat history to a newcomer
+- `js/settings.js`: the settings modal: name, room theme, sound, Giphy key
 - `js/notify.js`: new message notifications: favicon dot and ding, with the mute setting
-- `js/theme.js`: the room's theme: the list of themes, validation, applying it
-- `themes/`: one stylesheet per theme, setting the tokens `style.css` uses (see `themes/README.md`)
-- `js/emoji.js`: `:shortcode:` lookup and suggestions for the chat (gemoji)
-- `js/main.js`: UI, mesh sync (last `sentAt` wins), names, chat, `sessionStorage` persistence
+- `js/dom.js`: small DOM helpers (`el`, `button`, errors, status pill)
+- `style.css`: layout only; `themes/`: one stylesheet per theme, setting the tokens `style.css` uses (see `themes/README.md`)
+- `tickets/`: the backlog, one Markdown file per ticket (see `tickets/clonear.md`)

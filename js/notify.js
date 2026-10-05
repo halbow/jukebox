@@ -5,7 +5,8 @@
 
 const SOUND_KEY = 'jukebox:sound' // 'off' when the ding is muted
 
-const ICON = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📻</text></svg>`
+const favicon = document.querySelector('link[rel=icon]')
+const ICON = decodeURIComponent(favicon.getAttribute('href').replace(/^data:image\/svg\+xml,/, '')) // index.html's 📻
 
 let unread = false
 let audio = null
@@ -33,7 +34,7 @@ function setUnread(on) {
   if (unread === on) return
   unread = on
   const svg = on ? ICON.replace('</svg>', `${badge()}</svg>`) : ICON
-  document.querySelector('link[rel=icon]').href = `data:image/svg+xml,${encodeURIComponent(svg)}`
+  favicon.href = `data:image/svg+xml,${encodeURIComponent(svg)}`
 }
 
 // The theme's second accent, ringed with its background.

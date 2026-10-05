@@ -43,12 +43,30 @@ CREATOR                                 FRIEND
 
 ### Survive a refresh
 
-- The passphrase stays in the URL; name, peer id, join time, current `State` and chat are saved per tab in `sessionStorage`.
-- A refresh rejoins the same room, restores the video (via `expectedPosition`) and chat, and reconnects automatically.
+- The passphrase stays in the URL; name, session peer id, join time, current `State`, chat, queue, theme and history answers (`sharedWith`) are saved per tab in `sessionStorage`.
+- A refresh rejoins the same room, restores the video (via `expectedPosition`), chat, queue and theme, and reconnects automatically.
+- Each tab has a session peer id of its own, kept through a refresh (Trystero's peer id changes on every load). Messages carry it as `from`, to recognise people across refreshes.
+
+### Messages
+
+Every message type has its own Trystero action (`js/peers.js`), and its own check: a message that isn't the right
+shape, or goes over the limits in `js/limits.js` (names 24 chars, chat 300, queue 50…), is dropped before anything sees it.
+
+| Action | Shape | When |
+| --- | --- | --- |
+| `hello` | `{ name, joinedAt, pausedLocally, from }` | To each peer on connect, to everyone on a name or ⏸ change |
+| `state` | `State`, see below | On every player change; to newcomers |
+| `chat` | `{ type: 'chat', text, name, sentAt, from, editedAt?, gif? }` | A message or an edit; the history replayed to newcomers |
+| `history` | `{ from /* newcomer */, share }` | The first answer to "share the chat history?" |
+| `queue` | `{ items: [{ id, videoId, addedBy, from }], sentAt, from }` | On every queue change; to newcomers |
+| `theme` | `{ id, by, sentAt, from }` | On a theme change; to newcomers |
+
+`state`, `queue` and `theme` are shared the same way: each change sends the whole value, every peer keeps the newest
+(last `sentAt` wins, ties broken by peer id), newcomers get it on connect, and a peer that sends an older one gets the newer one back.
 
 ### Sync protocol
 
-A single message type over the data channel:
+The player's state:
 
 ```ts
 type State = {
@@ -78,7 +96,6 @@ type State = {
   when someone new joins, everyone already in the room with some history sees "<name> just joined. Share the chat history with them?" (Share / Don't share).
   The first answer is broadcast as `{ from: <newcomer's peer id>, share }` on a `history` action and settles it for everyone; the newcomer can't answer for themselves.
   Answers are kept in `sessionStorage` (`sharedWith`), so a refresh doesn't ask again. People who were here before you, and newcomers to a room with no history yet, get it without asking.
-  `hello` carries the sender's session peer id as `from`, to recognise people across refreshes.
 - Chat emoji, Slack style: typing `:` lists matching shortcodes (arrows + Enter or Tab to pick, Escape to close), and a fully typed `:joy:` turns into 😂, `:D` turns into 😃, and `:p` into 😛. Shortcodes come from GitHub's [gemoji](https://github.com/wooorm/gemoji), loaded from the CDN and pinned by hash.
 - When someone joins or leaves, a faded "HH:MM: <name> joined" / "HH:MM: <name> left" line shows in the chat. Only for comings and goings while you're there (not for who was already in the room when you came, unless they left and came back). It's local: never replayed to newcomers nor saved.
 - The chat input grows with the message, up to 5 lines, then scrolls, so the whole message stays in view while typing. Messages stay one line: Enter sends, and pasted line breaks become spaces.
@@ -92,7 +109,7 @@ type State = {
 - Up next (queue): "+ Queue" next to Play adds the link to a shared list shown under the player as a strip of thumbnails ("added by …", no titles: those would need a request to YouTube). Queuing when nothing is playing plays it right away. ⏭ Play next, or clicking a thumbnail, plays it and takes it out; ✕ removes it. Anyone can do all of it. When a video ends the next one starts by itself: the peers whose player ended advance only if the room is still on that video and it ended within 10s of when expected (so a peer back from a refresh with an old state can't skip the room ahead), and they all pick the same first item. Not under "Pause for me". The list travels like the `State`, whole, last `sentAt` wins: `{ items: [{ id, videoId, addedBy, from }], sentAt, from }`, capped at 50, sent to newcomers and kept in `sessionStorage`. Thumbnails are built from the video id (`i.ytimg.com`), never a URL from a peer.
 - Auto-paste: when nothing is playing (no video yet, or the room's video ended), a YouTube link in the clipboard is cued paused on focus.
 - A "Join / click to start" button to satisfy the browser autoplay policy.
-- Cosy vibe: warm dark theme, jukebox feel.
+- Cosy vibe by default: warm dark theme, jukebox feel.
 
 ## Out of scope (v1)
 
@@ -108,11 +125,3 @@ type State = {
 - Handshakes contain the public IP. They're encrypted with the passphrase on the relays; peers see each other's IP, as expected for P2P.
 - jukebox depends on public Nostr relays being up (volunteer-run, no SLA). Trystero connects to several at once.
 - Hidden or long-backgrounded tabs get throttled by the browser and may fail to reconnect until they're reloaded.
-
-## Milestones
-
-1. Single-file page: two peers connect via copy/paste, exchange a "ping".
-2. YouTube player embedded, with local controls.
-3. Sync play / pause / seek / video change between 2 peers (echo guard and drift).
-4. Star topology: host plus N guests, with relay.
-5. Polish UI and cosy theme.

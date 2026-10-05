@@ -120,7 +120,7 @@
           <div class="giphy-preview" id="giphy-preview" hidden></div>
           <form id="chat-form" class="chat-form">
             <ul id="emoji-suggestions" class="emoji-suggestions" role="listbox" hidden></ul>
-            <textarea id="chat-input" rows="1" placeholder="Say something…" maxlength="300" autocomplete="off" role="combobox" aria-controls="emoji-suggestions" aria-expanded="false"></textarea>
+            <textarea id="chat-input" rows="1" placeholder="Say something…" autocomplete="off" role="combobox" aria-controls="emoji-suggestions" aria-expanded="false"></textarea>
             <button class="btn">Send</button>
           </form>
         </aside>
@@ -142,7 +142,7 @@
         <form id="name-form" class="name-form">
           <p>What should the others call you?</p>
           <div class="name-row">
-            <input id="guest-name" type="text" placeholder="Your name" maxlength="24" autocomplete="nickname" required />
+            <input id="guest-name" type="text" placeholder="Your name" autocomplete="nickname" required />
             <button class="btn primary">Join</button>
           </div>
         </form>
@@ -154,7 +154,7 @@
         <form id="settings-name" class="setting">
           <label for="settings-name-input">Your name</label>
           <div class="name-row">
-            <input id="settings-name-input" type="text" maxlength="24" autocomplete="nickname" required />
+            <input id="settings-name-input" type="text" autocomplete="nickname" required />
             <button class="btn small">Save</button>
           </div>
         </form>
@@ -174,7 +174,7 @@
             <button class="btn small">Save</button>
             <button type="button" id="settings-giphy-remove" class="btn small">Remove</button>
           </div>
-          <p class="hint">Stays in this browser. <a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener">Get a free one</a> (Create an App → API).</p>
+          <p class="hint">Stays in this browser. <a id="settings-giphy-help" target="_blank" rel="noopener">Get a free one</a> (Create an App → API).</p>
         </form>
         <p class="error" id="settings-error" hidden></p>
         <div class="settings-actions"><button type="button" id="close-settings" class="btn primary">Done</button></div>
