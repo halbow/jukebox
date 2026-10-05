@@ -5,10 +5,18 @@ Watch and listen to YouTube together, in sync. Static files only, peer-to-peer o
 ## Run
 
 ```sh
-npx serve .        # or: python3 -m http.server
+npx serve .        # or: just serve, or: python3 -m http.server
 ```
 
 Open the printed URL (it must be http(s), not `file://`).
+
+## Test
+
+```sh
+node --test        # or: just test. Node 22.15+, nothing to install
+```
+
+`tests/` covers the modules without DOM: passphrases, YouTube URLs, the message checks, chat edits, `/giphy` parsing, emoji, `Sync` against a fake player (echo guard, drift, seeks, buffering, Pause for me, autoplay refused), and `shareNewest` over a fake Trystero. The CDN modules are swapped for stand-ins (`tests/fakes/`, and a few gemoji entries). CI runs them on every push (`.github/workflows/test.yml`).
 
 1. **Create a room** and send the link to your friends.
 2. They open it, pick a name, and they're in. Whoever's already there is asked whether to share the chat history with them.
@@ -52,4 +60,6 @@ UI, each module wiring itself to the page and the peers on import:
 - `js/notify.js`: new message notifications: favicon dot and ding, with the mute setting
 - `js/dom.js`: small DOM helpers (`el`, `button`, errors, status pill)
 - `style.css`: layout only; `themes/`: one stylesheet per theme, setting the tokens `style.css` uses (see `themes/README.md`)
+- `tests/`: `node --test` tests for the modules above that don't touch the DOM; `tests/fakes/`: Trystero stand-in
+- `justfile`: `just test`, `just serve`
 - `tickets/`: the backlog, one Markdown file per ticket (see `tickets/clonear.md`)
