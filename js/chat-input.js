@@ -77,9 +77,14 @@ function clearInput() {
 }
 
 // A one-line message in a box that grows with it, so you see all of it while typing: Enter sends, no newlines.
+// The form keeps its height while the box is measured: otherwise the chat log grows for that moment, which
+// clamps its scroll, and Firefox reports that as you scrolling up off the bottom (see chat-log.js).
 function fitChatInput() {
+  const form = input.form
+  form.style.minHeight = `${form.offsetHeight}px`
   input.style.height = 'auto'
   input.style.height = `${input.scrollHeight + input.offsetHeight - input.clientHeight}px` // plus the borders
+  form.style.minHeight = ''
 }
 
 function flattenLines() {
