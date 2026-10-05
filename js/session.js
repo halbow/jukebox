@@ -5,12 +5,10 @@
 // Each module keeps its part of the room right in `session` (the chat log is `session.chat`, the queue
 // `session.queue`…) and calls `save()` after changing it.
 
-import { isChat } from './chat.js'
 import { cleanName, isId, isTime, randomId } from './limits.js'
-import { EMPTY_QUEUE, isQueue } from './queue.js'
-import { isReaction } from './reactions.js'
-import { isState } from './sync.js'
-import { DEFAULT_THEME, isTheme } from './theme.js'
+import { isChat, isQueue, isReaction, isState, isTheme } from './protocol.js'
+import { EMPTY_QUEUE } from './queue.js'
+import { DEFAULT_THEME } from './theme.js'
 
 /** The current room's, once it's open. */
 export let session = null

@@ -2,11 +2,10 @@
 // every click sends a newer one, and every peer keeps the newest per (message, emoji, person), so all converge.
 // Removed ones are kept, off, so an older "on" replayed with the history can't bring them back.
 //
-// type Reaction = { key /* chatKey of the message */, emoji, on, name, sentAt, from }
+// The reaction itself, `Reaction`, is in protocol.js.
 
-import { MAX_REACTIONS, isId, isName, isTime } from './limits.js'
+import { MAX_REACTIONS } from './limits.js'
 
-const MAX_KEY_LENGTH = 48 // a `chatKey`: an id, a colon and a `Date.now()`
 const MAX_EMOJI_LENGTH = 16 // flags and ZWJ sequences (families) take a few code points
 
 const EMOJI_PARTS = /^[\p{Extended_Pictographic}\p{Emoji_Component}‍️⃣]+$/u
@@ -22,23 +21,6 @@ export function isEmoji(value) {
     EMOJI_BASE.test(value) &&
     [...graphemes.segment(value)].length === 1
   )
-}
-
-export function isReaction(msg) {
-  return (
-    typeof msg?.key === 'string' &&
-    msg.key.length > 0 &&
-    msg.key.length <= MAX_KEY_LENGTH &&
-    isEmoji(msg.emoji) &&
-    typeof msg.on === 'boolean' &&
-    isName(msg.name) &&
-    isTime(msg.sentAt) &&
-    isId(msg.from)
-  )
-}
-
-export function createReaction(key, emoji, on, { name, from }) {
-  return { key, emoji, on, name, sentAt: Date.now(), from }
 }
 
 const sameReaction = (a, b) => a.key === b.key && a.emoji === b.emoji && a.from === b.from

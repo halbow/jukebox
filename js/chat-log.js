@@ -7,15 +7,15 @@ import { $, el } from './dom.js'
 import { gifStillUrl, gifUrl } from './giphy.js'
 import { HISTORY_SIZE } from './limits.js'
 import { isAway, notify } from './notify.js'
-import { on, send } from './peers.js'
+import { createReaction, onChat, onReaction, sendChat, sendReaction } from './protocol.js'
 import { reactionPickerFor, toggleReactionPicker } from './reaction-picker.js'
-import { addReaction, createReaction, findReaction, reactionsOn } from './reactions.js'
+import { addReaction, findReaction, reactionsOn } from './reactions.js'
 import { save, session } from './session.js'
 
 let notices = [] // never replayed nor saved: [{ notice: true, text, sentAt }]
 
-on('chat', receiveChat)
-on('reaction', receiveReaction)
+onChat(receiveChat)
+onReaction(receiveReaction)
 
 // Read to the end unless you scrolled up, and kept there when the log shrinks (the input growing, the window resizing).
 let atBottom = true
@@ -30,7 +30,7 @@ new ResizeObserver(() => {
 /** A message of yours, new or edited: shown here and sent to everyone. */
 export function postChat(msg) {
   receiveChat(msg)
-  send('chat', msg)
+  sendChat(msg)
 }
 
 export function addNotice(text) {
@@ -66,7 +66,7 @@ export function toggleReaction(key, emoji) {
   const mine = findReaction(session.reactions, { key, emoji, from: session.peerId })
   const reaction = createReaction(key, emoji, !mine?.on, { name: session.name, from: session.peerId })
   receiveReaction(reaction)
-  send('reaction', reaction)
+  sendReaction(reaction)
 }
 
 // Kept even before its message arrives (the history replays both, in no set order).

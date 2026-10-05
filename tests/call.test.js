@@ -1,15 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { callStarted, isCall, streamChanges, videoQuality } from '../js/call.js'
+import { callStarted, streamChanges, videoQuality } from '../js/call.js'
 import { MAX_PEOPLE } from '../js/limits.js'
-
-test('isCall: out of the call, or muted and camera flags', () => {
-  assert.equal(isCall(null), true)
-  assert.equal(isCall({ muted: false, camera: true }), true)
-  for (const bad of [undefined, false, {}, { muted: false }, { muted: 'yes', camera: false }, { muted: false, camera: 1 }]) {
-    assert.equal(isCall(bad), false, JSON.stringify(bad))
-  }
-})
 
 test('videoQuality: lower as the call grows, never higher', () => {
   assert.deepEqual(videoQuality(2), { width: 640, height: 360, frameRate: 30 })

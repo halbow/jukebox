@@ -5,13 +5,14 @@
 
 import { chatKey } from './chat.js'
 import { $, actionsRow, button, el, hint } from './dom.js'
-import { on, onPeerLeave, send } from './peers.js'
+import { onPeerLeave } from './peers.js'
 import { people } from './people.js'
+import { createHistoryAnswer, onHistoryAnswer, sendChat, sendHistoryAnswer, sendReaction } from './protocol.js'
 import { save, session } from './session.js'
 
 let asks = [] // newcomers waiting for someone here to answer: [{ peerId, from, name }]
 
-on('history', ({ from, share }, peerId) => {
+onHistoryAnswer(({ from, share }, peerId) => {
   if (people.get(peerId)?.from === from) return // nobody answers for themselves
   if (from in session.sharedWith) return // already settled here
   settleHistory(from, share)
@@ -37,7 +38,7 @@ export function offerHistory(peerId, { from, name, joinedAt }) {
 
 function answerHistory(from, share) {
   settleHistory(from, share)
-  send('history', { from, share })
+  sendHistoryAnswer(createHistoryAnswer(from, share))
 }
 
 function settleHistory(from, share) {
@@ -51,9 +52,9 @@ function settleHistory(from, share) {
 }
 
 function sendHistory(peerId) {
-  for (const msg of session.chat) send('chat', msg, peerId)
+  for (const msg of session.chat) sendChat(msg, peerId)
   const keys = new Set(session.chat.map(chatKey))
-  for (const reaction of session.reactions) if (keys.has(reaction.key)) send('reaction', reaction, peerId)
+  for (const reaction of session.reactions) if (keys.has(reaction.key)) sendReaction(reaction, peerId)
 }
 
 function renderAsks() {

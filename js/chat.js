@@ -5,32 +5,7 @@
 //
 // A `/giphy` message carries a `gif` (see giphy.js) and its search as `text`, shown as the caption.
 //
-// type Chat = { type: 'chat', text, name, sentAt, from, editedAt?, gif? }
-
-import { isGif } from './giphy.js'
-import { MAX_CHAT_LENGTH, isId, isName, isTime } from './limits.js'
-
-export function isChat(msg) {
-  return (
-    msg?.type === 'chat' &&
-    typeof msg.text === 'string' &&
-    msg.text.length > 0 &&
-    msg.text.length <= MAX_CHAT_LENGTH &&
-    isName(msg.name) &&
-    isTime(msg.sentAt) &&
-    isId(msg.from) &&
-    (msg.editedAt === undefined || isTime(msg.editedAt)) &&
-    (msg.gif === undefined || isGif(msg.gif))
-  )
-}
-
-export function createChat(text, { name, from, gif }) {
-  return { type: 'chat', text, name, sentAt: Date.now(), from, ...(gif && { gif }) }
-}
-
-export function editChat(msg, text) {
-  return { ...msg, text, editedAt: Date.now() }
-}
+// The message itself, `Chat`, is in protocol.js.
 
 /** Whether `msg` should replace `current`, two versions of the same message. */
 export function isNewerEdit(msg, current) {

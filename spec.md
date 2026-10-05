@@ -49,7 +49,7 @@ CREATOR                                 FRIEND
 
 ### Messages
 
-Every message type has its own Trystero action (`js/peers.js`), and its own check: a message that isn't the right
+Every message type is defined in `js/protocol.js` and has its own Trystero action (`js/peers.js`), and its own check: a message that isn't the right
 shape, or goes over the limits in `js/limits.js` (names 24 chars, chat 300, queue 50…), is dropped before anything sees it.
 
 | Action | Shape | When |

@@ -8,8 +8,9 @@ import { $, clearError, flash, showError } from './dom.js'
 import { KEY_HELP_URL, checkKey, loadKey, saveKey } from './giphy.js'
 import { MAX_NAME_LENGTH, cleanName } from './limits.js'
 import { setSound, soundOn } from './notify.js'
-import { connectedAt, send, shareNewest } from './peers.js'
+import { connectedAt } from './peers.js'
 import { hello } from './people.js'
+import { createTheme, sendHello, sendTheme, shareTheme } from './protocol.js'
 import { save, session } from './session.js'
 import { THEMES, applyTheme } from './theme.js'
 
@@ -59,7 +60,7 @@ $('settings-name').addEventListener('submit', (e) => {
   session.name = name
   rememberName(name)
   save()
-  send('hello', hello()) // the others' people lists pick it up; past messages keep the old name
+  sendHello(hello()) // the others' people lists pick it up; past messages keep the old name
   flash(e.submitter)
 })
 
@@ -68,7 +69,7 @@ $('settings-name').addEventListener('submit', (e) => {
 $('settings-theme').append(...Object.entries(THEMES).map(([id, name]) => new Option(name, id)))
 $('settings-theme').addEventListener('change', (e) => setTheme(e.target.value))
 
-shareNewest('theme', {
+shareTheme({
   current: () => session.theme,
   accept: (msg) => {
     // Only a change made while we're here gets a line, not the room's theme handed to us on arrival.
@@ -79,8 +80,8 @@ shareNewest('theme', {
 
 function setTheme(id) {
   if (id === session.theme.id) return
-  receiveTheme({ id, by: session.name, sentAt: Date.now(), from: session.peerId })
-  send('theme', session.theme)
+  receiveTheme(createTheme(id, { name: session.name, from: session.peerId }))
+  sendTheme(session.theme)
   addNotice(`You switched the theme to ${THEMES[id]}`)
 }
 

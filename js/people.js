@@ -3,15 +3,16 @@
 import { myCall } from './call-ui.js'
 import { $, el, setStatus } from './dom.js'
 import { MAX_PEOPLE } from './limits.js'
+import { createHello } from './protocol.js'
 import { session } from './session.js'
 import { sync } from './stage.js'
 
 /** Everyone else: Trystero peer id → { name, joinedAt, pausedLocally, call, from }, from their `hello`. */
 export const people = new Map()
 
-/** What the others need to know about you, see `isHello`. */
+/** What the others need to know about you, see `Hello` in protocol.js. */
 export function hello() {
-  return { name: session.name, joinedAt: session.joinedAt, pausedLocally: sync.pausedLocally, call: myCall(), from: session.peerId }
+  return createHello({ name: session.name, joinedAt: session.joinedAt, pausedLocally: sync.pausedLocally, call: myCall(), from: session.peerId })
 }
 
 /** Whoever arrived after the first MAX_PEOPLE leaves. Older members stay, even after a refresh. */

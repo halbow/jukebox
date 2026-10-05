@@ -1,11 +1,11 @@
 // Keeps the local YouTube player in line with the shared room State, and turns local
 // player changes (play / pause / seek / video change) into State broadcasts.
 //
-// type State = { videoId, playing, position /* s, at sentAt */, sentAt /* sender Date.now() */, from }
+// The room State itself is in protocol.js.
 
 import { debug } from './debug.js'
-import { isId, isTime } from './limits.js'
-import { PLAYER_STATE, currentVideoId, isVideoId } from './youtube.js'
+import { createState } from './protocol.js'
+import { PLAYER_STATE, currentVideoId } from './youtube.js'
 
 const { UNSTARTED, PLAYING, PAUSED, BUFFERING, CUED } = PLAYER_STATE
 
@@ -22,16 +22,6 @@ const SETTLE_MS = 500
 
 const STATE_NAMES = Object.fromEntries(Object.entries(PLAYER_STATE).map(([name, value]) => [value, name]))
 const s1 = (seconds) => `${seconds.toFixed(1)}s`
-
-export function isState(msg) {
-  return (
-    isVideoId(msg?.videoId) &&
-    typeof msg.playing === 'boolean' &&
-    Number.isFinite(msg.position) &&
-    isTime(msg.sentAt) &&
-    isId(msg.from)
-  )
-}
 
 export function expectedPosition(state, now = Date.now()) {
   return state.playing ? state.position + (now - state.sentAt) / 1000 : state.position
@@ -93,7 +83,7 @@ export class Sync {
 
   /** Local "change video" from the URL bar, or cued paused (`playing: false`) for an auto-paste. */
   load(videoId, { playing = true } = {}) {
-    this.state = { videoId, playing, position: 0, sentAt: Date.now(), from: this.peerId }
+    this.state = createState({ videoId, playing, position: 0 }, this.peerId)
     debug(`sync: telling the room ${playing ? 'play' : 'cue'} ${videoId} from the start`)
     this.onBroadcast(this.state)
     this.#apply()
@@ -219,13 +209,14 @@ export class Sync {
   /** `reason` is for the debug log: the room follows us from here, so it's what explains a jump. */
   #broadcastLocal(reason) {
     const player = this.#player
-    this.state = {
-      videoId: currentVideoId(player) || this.state.videoId,
-      playing: player.getPlayerState() === PLAYING,
-      position: player.getCurrentTime(),
-      sentAt: Date.now(),
-      from: this.peerId,
-    }
+    this.state = createState(
+      {
+        videoId: currentVideoId(player) || this.state.videoId,
+        playing: player.getPlayerState() === PLAYING,
+        position: player.getCurrentTime(),
+      },
+      this.peerId,
+    )
     debug(`sync: telling the room ${this.state.playing ? 'playing' : 'paused'} at ${s1(this.state.position)}: ${reason}`)
     this.onBroadcast(this.state)
   }

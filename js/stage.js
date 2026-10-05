@@ -2,8 +2,8 @@
 // The room's player state is `sync.state` (see sync.js), its queue `session.queue` (see queue.js).
 
 import { $, button, clearError, el, showError } from './dom.js'
-import { MAX_QUEUE, randomId } from './limits.js'
-import { send, shareNewest } from './peers.js'
+import { MAX_QUEUE } from './limits.js'
+import { createQueue, createQueueItem, sendQueue, sendState, shareQueue, shareState } from './protocol.js'
 import { thumbnailUrl } from './queue.js'
 import { save, session } from './session.js'
 import { Sync, expectedPosition } from './sync.js'
@@ -17,14 +17,14 @@ let onPauseChange = () => {}
 export const sync = new Sync({
   peerId: '', // set once the session is known
   onBroadcast: (state) => {
-    send('state', state)
+    sendState(state)
     session.state = state
     save()
   },
   onNeedsGesture: () => ($('start-overlay').hidden = false),
 })
 
-shareNewest('state', {
+shareState({
   current: () => sync.state,
   accept: (state) => {
     sync.receive(state)
@@ -34,7 +34,7 @@ shareNewest('state', {
   },
 })
 
-shareNewest('queue', {
+shareQueue({
   current: () => session.queue,
   accept: (queue) => {
     session.queue = queue
@@ -137,15 +137,15 @@ $('queue-video').addEventListener('click', () => {
   const { items } = session.queue
   if (items.length >= MAX_QUEUE) return showError('room-error', `The queue is full (${MAX_QUEUE} videos).`, 'queue')
   clearError('room-error', 'queue')
-  setQueue([...items, { id: randomId(), videoId, addedBy: session.name, from: session.peerId }])
+  setQueue([...items, createQueueItem(videoId, { name: session.name, from: session.peerId })])
   $('video-url').focus()
 })
 
 // ---------- Up next ----------
 
 function setQueue(items) {
-  session.queue = { items, sentAt: Date.now(), from: session.peerId }
-  send('queue', session.queue)
+  session.queue = createQueue(items, session.peerId)
+  sendQueue(session.queue)
   renderQueue()
   save()
 }

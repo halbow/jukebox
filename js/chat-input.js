@@ -1,6 +1,6 @@
 // The chat input: sending, editing your last message (↑), `:emoji:` and `/giphy` commands.
 
-import { createChat, editChat } from './chat.js'
+import { createChat, editChat } from './protocol.js'
 import { postChat } from './chat-log.js'
 import { $ } from './dom.js'
 import { completedShortcodeAt, replaceShortcodes, shortcodeAt, suggest } from './emoji.js'

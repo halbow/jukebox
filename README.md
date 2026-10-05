@@ -36,7 +36,8 @@ No build step: plain ES modules, loaded as they are. Trystero and gemoji come fr
 
 Peers and data, no DOM:
 
-- `js/peers.js`: everything peers say to each other: joins the Trystero (Nostr) room, one channel per message type, drops malformed messages, and `shareNewest` for values the room shares (last `sentAt` wins)
+- `js/protocol.js`: every message peers say to each other: its shape, its builder, its check, and `sendX` / `onX` to send and receive it. Nothing else writes a message or names a channel
+- `js/peers.js`: how peers reach each other: joins the Trystero (Nostr) room, one channel per message type, drops malformed messages, `shareNewest` for values the room shares (last `sentAt` wins), and the call's streams
 - `js/limits.js`: the size limits (names, chat, queue, room) and the checks for the fields every message shares
 - `js/session.js`: what survives a refresh, per tab and per room, in `sessionStorage`
 - `js/sync.js`: keeps the player in line with the shared `State` (echo guard, drift, seek detection)

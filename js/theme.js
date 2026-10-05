@@ -3,8 +3,6 @@
 //
 // A theme is a stylesheet in themes/ that sets the tokens on `:root[data-theme='<id>']`, see themes/README.md.
 
-import { isId, isName, isTime } from './limits.js'
-
 // id → name, in the settings' order
 export const THEMES = {
   cosy: 'Cosy',
@@ -14,15 +12,6 @@ export const THEMES = {
   tavern: 'Tavern',
 }
 export const DEFAULT_THEME = { id: 'cosy', sentAt: 0, from: '' }
-
-export function isTheme(msg) {
-  return (
-    Object.hasOwn(THEMES, msg?.id) &&
-    (msg.by === undefined || isName(msg.by)) && // who picked it, for the chat line
-    isTime(msg.sentAt) &&
-    isId(msg.from)
-  )
-}
 
 export function applyTheme(id) {
   document.documentElement.dataset.theme = id

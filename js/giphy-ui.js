@@ -1,11 +1,11 @@
 // The `/giphy` preview between the chat log and the input: only you see it, until you send the GIF.
 // It's never in the chat log, never saved, never sent. The API side is in giphy.js.
 
-import { createChat } from './chat.js'
 import { gifElement, postChat } from './chat-log.js'
 import { $, actionsRow, button, el, errorLine, hint } from './dom.js'
 import { KEY_HELP_URL, checkKey, loadKey, saveKey, searchGifs } from './giphy.js'
 import { MAX_CHAT_LENGTH } from './limits.js'
+import { createChat } from './protocol.js'
 import { session } from './session.js'
 
 // { query?, results?, index?, loading?, error?, askKey? }, or null when closed

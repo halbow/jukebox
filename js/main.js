@@ -1,5 +1,5 @@
 // Boots the page: home or room from the URL, joining a room, and who comes and goes. The rest of the room
-// lives in its own modules, each wired to the peers on import (see peers.js for the messages).
+// lives in its own modules, each wired to the peers on import (see protocol.js for the messages).
 
 import { onCallChange, updateCall } from './call-ui.js'
 import { addNotice, renderChat } from './chat-log.js'
@@ -10,6 +10,7 @@ import { MAX_NAME_LENGTH, MAX_PEOPLE, cleanName } from './limits.js'
 import { createPassphrase, parsePassphrase } from './passphrase.js'
 import * as peers from './peers.js'
 import { hello, isOverCap, people, renderPeople } from './people.js'
+import * as protocol from './protocol.js'
 import { openSession, save, session } from './session.js'
 import { rememberName, rememberedName } from './settings.js'
 import { autoPaste, loadPlayer, onPausedLocallyChange, renderQueue, sync } from './stage.js'
@@ -84,7 +85,7 @@ function askName() {
 
 async function connect() {
   try {
-    await peers.connect(passphrase, {
+    await protocol.connect(passphrase, {
       onUnreachable: (peerId) => {
         unreachable.add(peerId)
         showError('room-error', UNREACHABLE, 'unreachable')
@@ -108,7 +109,7 @@ function endRoom(message) {
 peers.onPeerJoin((peerId) => {
   unreachable.delete(peerId)
   if (!unreachable.size) clearError('room-error', 'unreachable')
-  peers.send('hello', hello(), peerId)
+  protocol.sendHello(hello(), peerId)
   // The chat history waits for their hello: it says who they are, and whether they're new.
 })
 
@@ -123,7 +124,7 @@ peers.onPeerLeave((peerId) => {
   updateCall(people)
 })
 
-peers.on('hello', (msg, peerId) => {
+protocol.onHello((msg, peerId) => {
   const first = !people.has(peerId) // hello is resent on every change
   const person = { name: cleanName(msg.name) || 'Friend', joinedAt: msg.joinedAt, pausedLocally: msg.pausedLocally, call: msg.call, from: msg.from }
   people.set(peerId, person)
@@ -138,7 +139,7 @@ peers.on('hello', (msg, peerId) => {
 
 // So the others see the ⏸ or the 📞 next to your name, and who's in the call.
 function sendHello() {
-  peers.send('hello', hello())
+  protocol.sendHello(hello())
   renderPeople()
 }
 onPausedLocallyChange(sendHello)

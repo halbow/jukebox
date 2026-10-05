@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { MAX_REACTIONS } from '../js/limits.js'
-import { addReaction, createReaction, findReaction, isEmoji, isReaction, reactionsOn } from '../js/reactions.js'
+import { addReaction, findReaction, isEmoji, reactionsOn } from '../js/reactions.js'
 
 const reaction = { key: 'peer1:1000', emoji: '👍', on: true, name: 'Ada', sentAt: 2000, from: 'peer2' }
 
@@ -11,30 +11,6 @@ test('isEmoji: one emoji, flags and ZWJ sequences included', () => {
 
 test('isEmoji: no text, no digits, no more than one', () => {
   for (const bad of [null, '', 'a', 'lol', '1', '#', '👍👍', '👍 ', '<b>']) assert.equal(isEmoji(bad), false, bad)
-})
-
-test('isReaction: accepts a well-formed reaction, on or off', () => {
-  assert.equal(isReaction(reaction), true)
-  assert.equal(isReaction({ ...reaction, on: false }), true)
-})
-
-test('isReaction: drops malformed ones', () => {
-  for (const bad of [
-    null,
-    { ...reaction, key: '' },
-    { ...reaction, key: 'x'.repeat(49) },
-    { ...reaction, emoji: 'nice' },
-    { ...reaction, on: 'yes' },
-    { ...reaction, name: 42 },
-    { ...reaction, sentAt: 'now' },
-    { ...reaction, from: '' },
-  ]) {
-    assert.equal(isReaction(bad), false, JSON.stringify(bad))
-  }
-})
-
-test('createReaction: a valid reaction', () => {
-  assert.equal(isReaction(createReaction('peer1:1000', '🎉', true, { name: 'Ada', from: 'peer2' })), true)
 })
 
 test('addReaction: the newest per message, emoji and person wins', () => {

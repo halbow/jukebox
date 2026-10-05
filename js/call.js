@@ -1,7 +1,7 @@
 // The call, without the DOM: what `hello` says about it, who gets your stream, and your video's quality.
 //
 // There's no call object to start or end: the call is whoever's `hello` has a `call`, and it's over when
-// nobody's does. See call-ui.js for the screen.
+// nobody's does. `hello.call` is checked in protocol.js; see call-ui.js for the screen.
 
 /** Your video by the number of people in the call, you included: in a mesh each one gets their own copy. */
 const QUALITY = [
@@ -10,11 +10,6 @@ const QUALITY = [
   [6, { width: 320, height: 180, frameRate: 15 }],
   [Infinity, { width: 160, height: 90, frameRate: 10 }],
 ]
-
-/** `hello.call`: null out of the call, `{ muted, camera }` in it. */
-export function isCall(value) {
-  return value === null || (typeof value?.muted === 'boolean' && typeof value.camera === 'boolean')
-}
 
 /** The camera constraints for `count` people in the call. */
 export function videoQuality(count) {

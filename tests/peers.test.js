@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { registerHooks } from 'node:module'
 import { before, beforeEach, test } from 'node:test'
 import { addStream, addTrack, connect, isNewer, on, onPeerStream, onPeerTrack, removeStream, removeTrack, shareNewest } from '../js/peers.js'
+import { CHANNELS } from '../js/protocol.js'
 import { media, room, sent } from './fakes/trystero.js'
 
 // Trystero comes from the CDN in the browser: `connect` gets the fake instead.
@@ -43,7 +44,7 @@ before(async () => {
   onPeerTrack((track, stream, peerId) => tracks.push({ track, stream, peerId }))
   shareNewest('theme', { current: () => mine, accept: (msg) => accepted.push(msg) })
   on('hello', (msg, peerId) => hellos.push({ msg, peerId }))
-  await connect('some-passphrase', { onUnreachable: () => {} })
+  await connect('some-passphrase', { channels: CHANNELS, onUnreachable: () => {} })
 })
 
 beforeEach(() => {

@@ -1,46 +1,17 @@
-// Everything peers say to each other goes through here.
+// How peers reach each other: the room, its message channels, and the call's media. What they say, and the
+// checks it goes through, is protocol.js.
 //
 // Peers sharing a passphrase find each other through public Nostr relays (Trystero) and open direct WebRTC
 // connections, every peer to every other (mesh). Only the handshake goes through the relays, encrypted with
-// the passphrase; the messages below travel peer to peer.
+// the passphrase; the messages travel peer to peer.
 //
 // Each message type has its own channel and its own check: a message that fails it is dropped here, so
 // handlers only ever see well-formed data. Handlers can be registered before connecting, and sending
 // before then does nothing.
 
-import { isCall } from './call.js'
-import { isChat } from './chat.js'
 import { debug } from './debug.js'
-import { isId, isName, isTime } from './limits.js'
-import { isQueue } from './queue.js'
-import { isReaction } from './reactions.js'
-import { isState } from './sync.js'
-import { isTheme } from './theme.js'
 
 const APP_ID = 'jukebox-listen-together'
-
-const CHANNELS = {
-  hello: isHello, // who you are, see `isHello`: on connect, and again on every change
-  state: isState, // the room's player, see sync.js
-  chat: isChat, // a message or an edit, see chat.js; also how the history gets replayed to newcomers
-  reaction: isReaction, // an emoji on a message, or taken off, see reactions.js; replayed with the history
-  history: isHistoryAnswer, // whether a newcomer gets the chat history, see history.js
-  queue: isQueue, // Up next, see queue.js
-  theme: isTheme, // the room's theme, see theme.js
-}
-
-/**
- * `{ name, joinedAt, pausedLocally, call, from }`: `call` is null out of the call, see call.js. `from` is the
- * session peer id, which survives a refresh.
- */
-function isHello(msg) {
-  return isName(msg?.name) && isTime(msg.joinedAt) && typeof msg.pausedLocally === 'boolean' && isCall(msg.call) && isId(msg.from)
-}
-
-/** `{ from, share }`: the first answer to "share the chat history with <from>?", settling it for everyone. */
-function isHistoryAnswer(msg) {
-  return isId(msg?.from) && typeof msg.share === 'boolean'
-}
 
 const handlers = {} // message type → (msg, peerId)
 const joinHandlers = []
@@ -109,11 +80,12 @@ export function removeTrack(track, peerId) {
 }
 
 /**
- * Joins the room. Trystero loads on demand, so the home page doesn't wait for the CDN; the import map in
- * index.html pins it to CDN files checked by hash. Rejects if Trystero can't be loaded.
+ * Joins the room, with one channel per message type: `channels` is type → check, see protocol.js.
+ * Trystero loads on demand, so the home page doesn't wait for the CDN; the import map in index.html pins it
+ * to CDN files checked by hash. Rejects if Trystero can't be loaded.
  * `onUnreachable(peerId)`: a peer is in the room but we can't connect to them (strict networks, no TURN).
  */
-export async function connect(passphrase, { onUnreachable }) {
+export async function connect(passphrase, { channels, onUnreachable }) {
   const { joinRoom } = await import('trystero')
   room = joinRoom({ appId: APP_ID, password: passphrase }, passphrase, {
     onJoinError: ({ error, peerId }) => {
@@ -124,7 +96,7 @@ export async function connect(passphrase, { onUnreachable }) {
     },
   })
   actions = {}
-  for (const [type, isValid] of Object.entries(CHANNELS)) {
+  for (const [type, isValid] of Object.entries(channels)) {
     actions[type] = room.makeAction(type)
     actions[type].onMessage = (msg, { peerId }) => {
       const valid = isValid(msg)

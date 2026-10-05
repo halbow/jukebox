@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, mock, test } from 'node:test'
-import { Sync, expectedPosition, isState } from '../js/sync.js'
+import { Sync, expectedPosition } from '../js/sync.js'
 import { PLAYER_STATE } from '../js/youtube.js'
 
 const { UNSTARTED, PLAYING, PAUSED, BUFFERING, CUED } = PLAYER_STATE
@@ -17,24 +17,6 @@ test('expectedPosition: playing moves on with the clock', () => {
 
 test('expectedPosition: paused stays put', () => {
   assert.equal(expectedPosition({ ...state, playing: false }, state.sentAt + 60_000), 10)
-})
-
-test('isState: accepts a well-formed state', () => {
-  assert.equal(isState(state), true)
-})
-
-test('isState: drops malformed ones', () => {
-  for (const bad of [
-    null,
-    { ...state, videoId: 'nope' },
-    { ...state, playing: 'yes' },
-    { ...state, position: NaN },
-    { ...state, position: '10' },
-    { ...state, sentAt: undefined },
-    { ...state, from: '' },
-  ]) {
-    assert.equal(isState(bad), false, JSON.stringify(bad))
-  }
 })
 
 /**
