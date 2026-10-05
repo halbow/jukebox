@@ -15,11 +15,12 @@ Let's start with another theme
 ## Done
 
 - Themes live in `themes/`, one stylesheet each. `style.css` now only does layout: every color, the font, the corner radius and the page backdrop come from tokens set by the theme. `themes/README.md` lists the tokens and the steps to add a theme.
-- Four themes, all music-related:
+- Five themes, all music-related:
   - **Cosy**: the current look, the default.
   - **Cassette**: an '80s radio-cassette boombox. Black plastic and chrome, speaker grilles on both sides, an FM dial with its red needle in the top bar, silver piano-key buttons that go down when pressed, a cassette in the deck's window when nothing plays, and a tape reel instead of the vinyl.
   - **Festival**: the main stage at sunset, the sun going down behind the stage, wristbands for the people list.
   - **Concert hall**: classical music. Red velvet curtains drawn to the sides, staves of sheet music in the air, Didot italics and small caps like a concert programme, a treble clef after the name, gilded frames around the screen and cards, a ❦ ornament, and a piano keyboard along the top of the chat.
+  - **Tavern**: a dark inn in the Witcher's world, Gwent while the bard (Jaskier) sings. Blackened oak walls under a ceiling beam, fog, three claw marks, the hearth's embers flickering bottom left, bone-white engraved capitals, tarnished gold and blood red, a feather after the name, riveted leather cards, Gwent cards for the home page, the dialogs, the people and the Up next thumbnails (gilded frames, round strength badges holding the queue numbers), wooden-board buttons (the main one a lighter oak with gold letters), a Gwent board with face-down cards when nothing plays, and a wolf medallion instead of the vinyl that hums while the music plays.
 - Studio, Jazz club, Hi-Fi, Electro (the reworked Cyberpunk), Rave and Punk were tried and dropped.
 - A theme can be light too: native controls, scrollbars, input and button backgrounds now come from the theme too (`--scheme`, `--field`, `--raised`, `--hover`).
 - Chat name colors and the favicon's unread dot follow the theme too.

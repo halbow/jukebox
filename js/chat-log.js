@@ -13,6 +13,16 @@ let notices = [] // never replayed nor saved: [{ notice: true, text, sentAt }]
 
 on('chat', receiveChat)
 
+// Read to the end unless you scrolled up, and kept there when the log shrinks (the input growing, the window resizing).
+let atBottom = true
+const log = $('chat-log')
+log.addEventListener('scroll', () => {
+  atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 2
+})
+new ResizeObserver(() => {
+  if (atBottom) log.scrollTop = log.scrollHeight
+}).observe(log)
+
 /** A message of yours, new or edited: shown here and sent to everyone. */
 export function postChat(msg) {
   receiveChat(msg)

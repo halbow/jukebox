@@ -11,6 +11,7 @@ export const THEMES = {
   cassette: 'Cassette',
   festival: 'Festival',
   concert: 'Concert hall',
+  tavern: 'Tavern',
 }
 export const DEFAULT_THEME = { id: 'cosy', sentAt: 0, from: '' }
 
