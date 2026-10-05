@@ -14,7 +14,6 @@ import { rememberName, rememberedName } from './settings.js'
 import { autoPaste, loadPlayer, onPausedLocallyChange, renderQueue, sync } from './stage.js'
 import { applyTheme } from './theme.js'
 
-const LAYOUT_KEY = 'jukebox:layout' // 'chat' when the chat is in focus, the video otherwise
 const UNREACHABLE = "Couldn't connect to someone in the room. One of you may be on a strict network (mobile data, office Wi-Fi)."
 
 const views = { home: $('view-home'), room: $('view-room'), ended: $('view-ended') }
@@ -141,20 +140,6 @@ onPausedLocallyChange(() => {
 })
 
 $('copy-invite').addEventListener('click', (e) => copy(`${location.origin}${location.pathname}#room=${passphrase}`, e.currentTarget))
-
-// ---------- layout ----------
-
-function setChatMode(on) {
-  views.room.classList.toggle('chat-mode', on)
-  const toggle = $('toggle-layout')
-  toggle.textContent = on ? '📺' : '💬'
-  toggle.title = toggle.ariaLabel = on ? 'Focus on the video' : 'Focus on the chat'
-  toggle.ariaPressed = String(on)
-  localStorage.setItem(LAYOUT_KEY, on ? 'chat' : 'video')
-}
-
-$('toggle-layout').addEventListener('click', () => setChatMode(!views.room.classList.contains('chat-mode')))
-setChatMode(localStorage.getItem(LAYOUT_KEY) === 'chat')
 
 // ---------- boot ----------
 

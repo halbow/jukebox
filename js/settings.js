@@ -1,4 +1,4 @@
-// The settings modal (⚙️ in the top bar): your name, the room's theme, the message sound, your Giphy key.
+// The settings modal (⚙️ in the top bar): your name, the room's theme, chat mode, the message sound, your Giphy key.
 // All but the theme are yours and stay in `localStorage`; the theme is the room's (see theme.js).
 
 import { addNotice } from './chat-log.js'
@@ -12,6 +12,7 @@ import { save, session } from './session.js'
 import { THEMES, applyTheme } from './theme.js'
 
 const NAME_KEY = 'jukebox:name'
+const LAYOUT_KEY = 'jukebox:layout' // 'chat' when the chat is in focus, the video otherwise
 
 $('settings-name-input').maxLength = MAX_NAME_LENGTH
 $('settings-giphy-help').href = KEY_HELP_URL
@@ -19,6 +20,7 @@ $('settings-giphy-help').href = KEY_HELP_URL
 function openSettings() {
   $('settings-name-input').value = session.name
   $('settings-theme').value = session.theme.id
+  $('settings-chat-mode').checked = $('view-room').classList.contains('chat-mode')
   $('settings-sound').checked = soundOn()
   $('settings-giphy-input').value = loadKey()
   $('settings-giphy-remove').hidden = !loadKey()
@@ -84,6 +86,16 @@ function receiveTheme(msg) {
   $('settings-theme').value = msg.id
   save()
 }
+
+// ---------- chat mode ----------
+
+function setChatMode(on) {
+  $('view-room').classList.toggle('chat-mode', on)
+  localStorage.setItem(LAYOUT_KEY, on ? 'chat' : 'video')
+}
+
+$('settings-chat-mode').addEventListener('change', (e) => setChatMode(e.target.checked))
+setChatMode(localStorage.getItem(LAYOUT_KEY) === 'chat')
 
 // ---------- sound ----------
 

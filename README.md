@@ -26,7 +26,7 @@ node --test        # or: just test. Node 22.15+, nothing to install
 6. The 💬 button in the chat switches to chat mode (chat in the middle, video in the corner); 📺 switches back.
 7. **⏸ Pause for me** stops the music for you only; **Rejoin the room** jumps back to where the others are. They see a ⏸ next to your name meanwhile.
 8. New messages put a dot on the tab's icon and play a ding while you're away.
-9. ⚙️ in the top bar opens the settings: your name, the room's theme (for everyone), the message sound, your Giphy key.
+9. ⚙️ in the top bar opens the settings: your name, the room's theme (for everyone), chat mode, the message sound, your Giphy key.
 
 ## Code
 
@@ -48,7 +48,7 @@ Peers and data, no DOM:
 
 UI, each module wiring itself to the page and the peers on import:
 
-- `js/main.js`: boots the page (home or room), joins the room, `hello` and who comes and goes, layout toggle
+- `js/main.js`: boots the page (home or room), joins the room, `hello` and who comes and goes
 - `js/stage.js`: the player, the link form, Up next and Pause for me
 - `js/people.js`: the people list and your `hello`
 - `js/chat-log.js`: the chat log: messages, join/leave notices, GIFs
@@ -56,7 +56,7 @@ UI, each module wiring itself to the page and the peers on import:
 - `js/suggestions.js`: the emoji / command list above the chat input
 - `js/giphy-ui.js`: the private `/giphy` preview and the key prompt
 - `js/history.js`: asking the room before replaying the chat history to a newcomer
-- `js/settings.js`: the settings modal: name, room theme, sound, Giphy key
+- `js/settings.js`: the settings modal: name, room theme, chat mode, sound, Giphy key
 - `js/notify.js`: new message notifications: favicon dot and ding, with the mute setting
 - `js/dom.js`: small DOM helpers (`el`, `button`, errors, status pill)
 - `style.css`: layout only; `themes/`: one stylesheet per theme, setting the tokens `style.css` uses (see `themes/README.md`)
