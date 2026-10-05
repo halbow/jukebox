@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { registerHooks } from 'node:module'
 import { before, beforeEach, test } from 'node:test'
-import { connect, isNewer, on, shareNewest } from '../js/peers.js'
-import { room, sent } from './fakes/trystero.js'
+import { addStream, addTrack, connect, isNewer, on, onPeerStream, onPeerTrack, removeStream, removeTrack, shareNewest } from '../js/peers.js'
+import { media, room, sent } from './fakes/trystero.js'
 
 // Trystero comes from the CDN in the browser: `connect` gets the fake instead.
 registerHooks({
@@ -33,9 +33,14 @@ test('isNewer: a value is not newer than itself', () => {
 let mine
 const accepted = []
 const hellos = []
+const streams = []
+const tracks = []
 const theme = (id, sentAt, from) => ({ id, sentAt, from })
 
 before(async () => {
+  addStream('too early', 'peerA') // sending before connecting does nothing
+  onPeerStream((stream, peerId) => streams.push({ stream, peerId }))
+  onPeerTrack((track, stream, peerId) => tracks.push({ track, stream, peerId }))
   shareNewest('theme', { current: () => mine, accept: (msg) => accepted.push(msg) })
   on('hello', (msg, peerId) => hellos.push({ msg, peerId }))
   await connect('some-passphrase', { onUnreachable: () => {} })
@@ -43,7 +48,7 @@ before(async () => {
 
 beforeEach(() => {
   mine = theme('cosy', 1000, 'me')
-  accepted.length = sent.length = hellos.length = 0
+  accepted.length = sent.length = hellos.length = media.length = streams.length = tracks.length = 0
 })
 
 test('shareNewest: a newcomer gets ours', () => {
@@ -97,13 +102,40 @@ test('connect: malformed messages are dropped before any handler', () => {
   room.receive('theme', null, 'peerA')
   room.receive('hello', { name: 'x'.repeat(100), joinedAt: 1, pausedLocally: false, from: 'peerA' }, 'peerA')
   room.receive('hello', { name: 'Ada', joinedAt: 1, from: 'peerA' }, 'peerA') // no pausedLocally
+  room.receive('hello', { name: 'Ada', joinedAt: 1, pausedLocally: false, from: 'peerA' }, 'peerA') // no call
+  room.receive('hello', { name: 'Ada', joinedAt: 1, pausedLocally: false, call: { muted: 'no', camera: false }, from: 'peerA' }, 'peerA')
   assert.deepEqual(accepted, [])
   assert.deepEqual(sent, [])
   assert.deepEqual(hellos, [])
 })
 
 test('connect: well-formed ones reach their handler, with the sender', () => {
-  const hello = { name: 'Ada', joinedAt: 1, pausedLocally: false, from: 'ada' }
+  const hello = { name: 'Ada', joinedAt: 1, pausedLocally: false, call: null, from: 'ada' }
+  const inCall = { ...hello, call: { muted: true, camera: false } }
   room.receive('hello', hello, 'peerA')
-  assert.deepEqual(hellos, [{ msg: hello, peerId: 'peerA' }])
+  room.receive('hello', inCall, 'peerA')
+  assert.deepEqual(hellos, [
+    { msg: hello, peerId: 'peerA' },
+    { msg: inCall, peerId: 'peerA' },
+  ])
+})
+
+test('media: streams and tracks go to the peer asked for', () => {
+  addStream('mine', 'peerA')
+  addTrack('camera', 'mine', 'peerA')
+  removeTrack('camera', 'peerA')
+  removeStream('mine', 'peerA')
+  assert.deepEqual(media, [
+    { op: 'addStream', stream: 'mine', to: 'peerA' },
+    { op: 'addTrack', track: 'camera', stream: 'mine', to: 'peerA' },
+    { op: 'removeTrack', track: 'camera', to: 'peerA' },
+    { op: 'removeStream', stream: 'mine', to: 'peerA' },
+  ])
+})
+
+test('media: their streams and tracks reach the handlers, with the sender', () => {
+  room.stream('theirs', 'peerA')
+  room.track('camera', 'theirs', 'peerA')
+  assert.deepEqual(streams, [{ stream: 'theirs', peerId: 'peerA' }])
+  assert.deepEqual(tracks, [{ track: 'camera', stream: 'theirs', peerId: 'peerA' }])
 })

@@ -70,6 +70,19 @@
 
       <section id="view-room" class="view room" hidden>
         <div class="stage">
+          <!-- In the call, it takes the player's place: the player only gets hidden, so it doesn't reload. -->
+          <div id="call-screen" class="call-screen" hidden>
+            <ul id="call-tiles" class="call-tiles"></ul>
+            <div class="call-controls">
+              <!-- Their icon, title and label follow the state, see call-ui.js -->
+              <button type="button" id="call-mute" class="btn round"></button>
+              <button type="button" id="call-camera" class="btn round"></button>
+              <button type="button" id="call-hang-up" class="btn round hang-up" title="Hang up" aria-label="Hang up">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.956.956 0 0 1-.29-.7c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28a11.27 11.27 0 0 0-2.67-1.85.996.996 0 0 1-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
+              </button>
+            </div>
+            <p class="error" id="call-error" hidden></p>
+          </div>
           <div class="screen">
             <div id="player"></div>
             <div class="empty" id="empty-screen">Paste a YouTube link below to get the music going 🎵</div>
@@ -105,6 +118,7 @@
             <h3>
               In the room
               <button id="copy-invite" class="icon-btn" title="Copy room link" aria-label="Copy room link">🔗</button>
+              <button type="button" id="call" class="btn small call-btn">📞</button>
               <span class="count" id="people-count"></span>
             </h3>
             <ul id="people" class="people"></ul>
@@ -114,12 +128,15 @@
           <ul id="chat-log" class="chat-log"></ul>
           <p class="hint chat-editing" id="chat-editing" hidden>Editing your last message · Esc to cancel</p>
           <p class="hint chat-command" id="chat-command" hidden></p>
+          <div id="call-asks"></div>
           <div id="history-asks"></div>
           <div class="giphy-preview" id="giphy-preview" hidden></div>
           <form id="chat-form" class="chat-form">
             <ul id="emoji-suggestions" class="emoji-suggestions" role="listbox" hidden></ul>
             <textarea id="chat-input" rows="1" placeholder="Say something…" autocomplete="off" role="combobox" aria-controls="emoji-suggestions" aria-expanded="false"></textarea>
-            <button class="btn">Send</button>
+            <button class="btn send-btn" title="Send" aria-label="Send">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>
+            </button>
           </form>
         </aside>
       </section>

@@ -8,6 +8,7 @@
 // handlers only ever see well-formed data. Handlers can be registered before connecting, and sending
 // before then does nothing.
 
+import { isCall } from './call.js'
 import { isChat } from './chat.js'
 import { isId, isName, isTime } from './limits.js'
 import { isQueue } from './queue.js'
@@ -27,9 +28,12 @@ const CHANNELS = {
   theme: isTheme, // the room's theme, see theme.js
 }
 
-/** `{ name, joinedAt, pausedLocally, from }`: `from` is the session peer id, which survives a refresh. */
+/**
+ * `{ name, joinedAt, pausedLocally, call, from }`: `call` is null out of the call, see call.js. `from` is the
+ * session peer id, which survives a refresh.
+ */
 function isHello(msg) {
-  return isName(msg?.name) && isTime(msg.joinedAt) && typeof msg.pausedLocally === 'boolean' && isId(msg.from)
+  return isName(msg?.name) && isTime(msg.joinedAt) && typeof msg.pausedLocally === 'boolean' && isCall(msg.call) && isId(msg.from)
 }
 
 /** `{ from, share }`: the first answer to "share the chat history with <from>?", settling it for everyone. */
@@ -40,6 +44,8 @@ function isHistoryAnswer(msg) {
 const handlers = {} // message type → (msg, peerId)
 const joinHandlers = []
 const leaveHandlers = []
+let streamHandler = null
+let trackHandler = null
 let room = null
 let actions = null // message type → Trystero action
 
@@ -65,6 +71,36 @@ export function send(type, msg, peerId) {
   actions?.[type].send(msg, peerId && { target: peerId })
 }
 
+// ---------- media, for the call ----------
+// Streams travel over the same connections as the messages. Trystero renegotiates them as tracks come and go.
+
+/** `handler(stream, peerId)` when a peer starts sending us their stream. */
+export function onPeerStream(handler) {
+  streamHandler = handler
+}
+
+/** `handler(track, stream, peerId)` when a peer adds a track to the stream they send us. */
+export function onPeerTrack(handler) {
+  trackHandler = handler
+}
+
+export function addStream(stream, peerId) {
+  room?.addStream(stream, { target: peerId })
+}
+
+export function removeStream(stream, peerId) {
+  room?.removeStream(stream, { target: peerId })
+}
+
+/** Adds `track` to `stream`, already sent to `peerId`. */
+export function addTrack(track, stream, peerId) {
+  room?.addTrack(track, stream, { target: peerId })
+}
+
+export function removeTrack(track, peerId) {
+  room?.removeTrack(track, { target: peerId })
+}
+
 /**
  * Joins the room. Trystero loads on demand, so the home page doesn't wait for the CDN; the import map in
  * index.html pins it to CDN files checked by hash. Rejects if Trystero can't be loaded.
@@ -87,6 +123,8 @@ export async function connect(passphrase, { onUnreachable }) {
   connectedAt = Date.now()
   room.onPeerJoin = (peerId) => joinHandlers.forEach((handler) => handler(peerId))
   room.onPeerLeave = (peerId) => leaveHandlers.forEach((handler) => handler(peerId))
+  room.onPeerStream = (stream, peerId) => streamHandler?.(stream, peerId)
+  room.onPeerTrack = (track, stream, peerId) => trackHandler?.(track, stream, peerId)
 }
 
 export function leave() {

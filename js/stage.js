@@ -193,7 +193,8 @@ $('next-video').addEventListener('click', () => session.queue.items.length && pl
 
 // ---------- Pause for me ----------
 
-function setPausedLocally(paused) {
+/** Pause for me, or rejoin the room. The call uses it too, see call-ui.js. */
+export function setPausedLocally(paused) {
   if (paused) sync.pauseLocally()
   else sync.resumeLocally()
   $('rejoin-overlay').hidden = !paused

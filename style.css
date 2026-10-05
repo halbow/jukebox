@@ -114,9 +114,19 @@ body:has(#view-room:not([hidden])) .topbar {
   align-self: start;
 }
 
+/* In the call, the call screen takes the player's place, chat mode or not. */
+.view.room.in-call {
+  grid-template-columns: minmax(0, 1fr) 360px;
+}
+
+.in-call .stage > :not(.call-screen) {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .view.room,
-  .view.room.chat-mode {
+  .view.room.chat-mode,
+  .view.room.in-call {
     grid-template-columns: 1fr;
     grid-template-areas: 'stage' 'chat';
   }
@@ -524,6 +534,13 @@ select:focus {
   font-size: 0.75rem;
 }
 
+/* In the call: a small 📞 after the name. */
+.people li.in-call::after {
+  content: '📞';
+  margin-left: 6px;
+  font-size: 0.75rem;
+}
+
 /* The scrollbar hugs the card's right edge, in its padding, rather than eating into the narrow message column. */
 .chat-log {
   list-style: none;
@@ -598,6 +615,18 @@ select:focus {
   display: flex;
   align-items: flex-end;
   gap: 8px;
+}
+
+.call-btn {
+  white-space: nowrap;
+}
+
+/* Icon only, so the chat input keeps the width. */
+.send-btn {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  padding: 0;
 }
 
 /* The chat input grows with the message (see `fitChatInput`), up to about 5 lines, then scrolls. */
@@ -980,4 +1009,136 @@ select:focus {
   .vinyl.spinning {
     animation: none;
   }
+}
+
+/* ---------- call ---------- */
+
+.call-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Same 16:9 as the player it stands in for, so the room keeps its size. The tiles are 16:9 too: up to 4
+   columns of them always fit, centered. */
+.call-tiles {
+  display: grid;
+  grid-template-columns: repeat(var(--columns, 1), minmax(0, 1fr));
+  align-content: center;
+  gap: 10px;
+  aspect-ratio: 16 / 9;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.call-tiles:is([data-count='2'], [data-count='3'], [data-count='4']) {
+  --columns: 2;
+}
+
+.call-tiles:is([data-count='5'], [data-count='6'], [data-count='7'], [data-count='8'], [data-count='9']) {
+  --columns: 3;
+}
+
+.call-tiles:is([data-count='10'], [data-count='11'], [data-count='12']) {
+  --columns: 4;
+}
+
+.tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: radial-gradient(circle at center, var(--surface), var(--surface-deep));
+}
+
+/* The video always plays, it carries the sound too: without the camera it's only see-through. */
+.tile video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+}
+
+.tile.camera video {
+  opacity: 1;
+}
+
+/* Your own, like a mirror. */
+.tile.mine video {
+  transform: scaleX(-1);
+}
+
+.tile.camera .avatar {
+  display: none;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: min(96px, 30%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: var(--on-accent);
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.tile-name {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  font-size: 0.85rem;
+}
+
+.tile.muted .tile-name::after {
+  content: ' 🔇';
+}
+
+.call-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Round icon buttons, Meet style. */
+.call-controls .btn.round {
+  width: 52px;
+  height: 52px;
+  padding: 0;
+}
+
+.call-controls .btn.round svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+
+/* Mic or camera off: the light button, so it stands out. */
+.call-controls .btn.round.off {
+  border-color: transparent;
+  background: var(--text);
+  color: var(--bg);
+}
+
+.call-controls .btn.hang-up {
+  width: 72px;
+  border-color: transparent;
+  background: var(--err);
+  color: var(--on-accent);
+}
+
+.call-screen .error {
+  margin: 0;
+  text-align: center;
 }

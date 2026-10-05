@@ -1,6 +1,7 @@
 // Boots the page: home or room from the URL, joining a room, and who comes and goes. The rest of the room
 // lives in its own modules, each wired to the peers on import (see peers.js for the messages).
 
+import { onCallChange, updateCall } from './call-ui.js'
 import { addNotice, renderChat } from './chat-log.js'
 import './chat-input.js'
 import { $, clearError, copy, setStatus, showError } from './dom.js'
@@ -119,13 +120,15 @@ peers.onPeerLeave((peerId) => {
   }
   people.delete(peerId)
   renderPeople()
+  updateCall(people)
 })
 
 peers.on('hello', (msg, peerId) => {
   const first = !people.has(peerId) // hello is resent on every change
-  const person = { name: cleanName(msg.name) || 'Friend', joinedAt: msg.joinedAt, pausedLocally: msg.pausedLocally, from: msg.from }
+  const person = { name: cleanName(msg.name) || 'Friend', joinedAt: msg.joinedAt, pausedLocally: msg.pausedLocally, call: msg.call, from: msg.from }
   people.set(peerId, person)
   renderPeople()
+  updateCall(people)
   if (isOverCap()) return endRoom(`The room is full: ${MAX_PEOPLE} people are already listening.`)
   if (!first) return
   // Not for those already here when we came, unless they left meanwhile (e.g. a refresh).
@@ -133,11 +136,13 @@ peers.on('hello', (msg, peerId) => {
   offerHistory(peerId, person)
 })
 
-// So the others see the ⏸ next to your name.
-onPausedLocallyChange(() => {
+// So the others see the ⏸ or the 📞 next to your name, and who's in the call.
+function sendHello() {
   peers.send('hello', hello())
   renderPeople()
-})
+}
+onPausedLocallyChange(sendHello)
+onCallChange(sendHello)
 
 $('copy-invite').addEventListener('click', (e) => copy(`${location.origin}${location.pathname}#room=${passphrase}`, e.currentTarget))
 

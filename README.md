@@ -16,7 +16,7 @@ Open the printed URL (it must be http(s), not `file://`).
 node --test        # or: just test. Node 22.15+, nothing to install
 ```
 
-`tests/` covers the modules without DOM: passphrases, YouTube URLs, the message checks, chat edits, reactions, `/giphy` parsing, emoji, `Sync` against a fake player (echo guard, drift, seeks, buffering, Pause for me, autoplay refused), and `shareNewest` over a fake Trystero. The CDN modules are swapped for stand-ins (`tests/fakes/`, and a few gemoji entries). CI runs them on every push (`.github/workflows/test.yml`).
+`tests/` covers the modules without DOM: passphrases, YouTube URLs, the message checks, chat edits, reactions, `/giphy` parsing, emoji, `Sync` against a fake player (echo guard, drift, seeks, buffering, Pause for me, autoplay refused), the call's rules (who gets your stream, video quality), and `shareNewest` and the media hooks over a fake Trystero. The CDN modules are swapped for stand-ins (`tests/fakes/`, and a few gemoji entries). CI runs them on every push (`.github/workflows/test.yml`).
 
 1. **Create a room** and send the link to your friends.
 2. They open it, pick a name, and they're in. Whoever's already there is asked whether to share the chat history with them.
@@ -26,8 +26,9 @@ node --test        # or: just test. Node 22.15+, nothing to install
 6. `/giphy cats` searches a GIF (bring your own [Giphy API key](https://developers.giphy.com/dashboard/): Create an App → API).
 7. The 💬 button in the chat switches to chat mode (chat in the middle, video in the corner); 📺 switches back.
 8. **⏸ Pause for me** stops the music for you only; **Rejoin the room** jumps back to where the others are. They see a ⏸ next to your name meanwhile.
-9. New messages put a dot on the tab's icon and play a ding while you're away.
-10. ⚙️ in the top bar opens the settings: your name, the room's theme (for everyone), chat mode, the message sound, your Giphy key.
+9. **📞**, next to "In the room", starts a call: the others are asked to join, and the music pauses for whoever's in it. Mute, show your video, hang up to get back to the music.
+10. New messages put a dot on the tab's icon and play a ding while you're away.
+11. ⚙️ in the top bar opens the settings: your name, the room's theme (for everyone), chat mode, the message sound, your Giphy key.
 
 ## Code
 
@@ -45,6 +46,7 @@ Peers and data, no DOM:
 - `js/theme.js`: the list of themes, validation, applying one
 - `js/giphy.js`: `/giphy` command parsing, Giphy search with your own key, GIF validation and URLs
 - `js/emoji.js`: `:shortcode:` lookup and suggestions (gemoji)
+- `js/call.js`: the call's `hello` field, who gets your stream, your video's quality by the call's size
 - `js/youtube.js`: IFrame Player API loader and URL parsing
 - `js/passphrase.js`: random passphrases from the EFF short wordlist
 
@@ -58,6 +60,7 @@ UI, each module wiring itself to the page and the peers on import:
 - `js/suggestions.js`: the emoji / command list above the chat input
 - `js/reaction-picker.js`: the emoji picker for reactions, just below the message
 - `js/giphy-ui.js`: the private `/giphy` preview and the key prompt
+- `js/call-ui.js`: the 📞 button, the call screen (tiles, mute, camera, hang up) and the "is calling" prompt
 - `js/history.js`: asking the room before replaying the chat history to a newcomer
 - `js/settings.js`: the settings modal: name, room theme, chat mode, sound, Giphy key
 - `js/notify.js`: new message notifications: favicon dot and ding, with the mute setting
