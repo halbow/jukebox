@@ -6,6 +6,7 @@ export const MAX_NAME_LENGTH = 24
 export const MAX_CHAT_LENGTH = 300
 export const HISTORY_SIZE = 50 // chat messages replayed to someone who joins late
 export const MAX_QUEUE = 50
+export const MAX_REACTIONS = 1000 // kept per room, removed ones included: about 20 per message in the history
 const MAX_ID_LENGTH = 16
 
 /** A peer's session id, or a queue item's. */

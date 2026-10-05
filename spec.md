@@ -43,7 +43,7 @@ CREATOR                                 FRIEND
 
 ### Survive a refresh
 
-- The passphrase stays in the URL; name, session peer id, join time, current `State`, chat, queue, theme and history answers (`sharedWith`) are saved per tab in `sessionStorage`.
+- The passphrase stays in the URL; name, session peer id, join time, current `State`, chat, reactions, queue, theme and history answers (`sharedWith`) are saved per tab in `sessionStorage`.
 - A refresh rejoins the same room, restores the video (via `expectedPosition`), chat, queue and theme, and reconnects automatically.
 - Each tab has a session peer id of its own, kept through a refresh (Trystero's peer id changes on every load). Messages carry it as `from`, to recognise people across refreshes.
 
@@ -57,6 +57,7 @@ shape, or goes over the limits in `js/limits.js` (names 24 chars, chat 300, queu
 | `hello` | `{ name, joinedAt, pausedLocally, from }` | To each peer on connect, to everyone on a name or ⏸ change |
 | `state` | `State`, see below | On every player change; to newcomers |
 | `chat` | `{ type: 'chat', text, name, sentAt, from, editedAt?, gif? }` | A message or an edit; the history replayed to newcomers |
+| `reaction` | `{ key /* chatKey */, emoji, on, name, sentAt, from }` | Reacting to a message or taking it off; replayed with the history |
 | `history` | `{ from /* newcomer */, share }` | The first answer to "share the chat history?" |
 | `queue` | `{ items: [{ id, videoId, addedBy, from }], sentAt, from }` | On every queue change; to newcomers |
 | `theme` | `{ id, by, sentAt, from }` | On a theme change; to newcomers |
@@ -100,6 +101,7 @@ type State = {
 - When someone joins or leaves, a faded "HH:MM: <name> joined" / "HH:MM: <name> left" line shows in the chat. Only for comings and goings while you're there (not for who was already in the room when you came, unless they left and came back). It's local: never replayed to newcomers nor saved.
 - The chat input grows with the message, up to 5 lines, then scrolls, so the whole message stays in view while typing. Messages stay one line: Enter sends, and pasted line breaks become spaces.
 - Edit your last message: ↑ in an empty chat input loads it back (Escape cancels). The edit is resent with the same `from` and `sentAt` plus an `editedAt`; the newest edit wins, shows as "(edited)", and is what late joiners get.
+- Emoji reactions, Slack style: the smiley-plus on a message (on hover, always on touch screens) opens a picker just below it, with a few favourites and a search through the shortcodes. Reactions show as pills under the message, with a count and who reacted on hover; yours are highlighted, and clicking a pill adds or takes off yours. Once a message has one, a round smiley-plus pill after them adds another. Each one is `{ key /* the message's chatKey */, emoji, on, name, sentAt, from }` on a `reaction` action: every peer keeps the newest per message, emoji and person, removed ones included (`on: false`), so a replayed old one can't bring it back. Peers can only react with a single emoji. They're kept in `sessionStorage` (`reactions`, at most 1000) and replayed with the history, after the messages. Reacting doesn't scroll the log nor notify.
 - `/giphy <search>`, Slack style: a preview only you see, with Send / Shuffle / Cancel (Escape), from 25 results (`rating=pg-13`). Searching needs your own Giphy API key, asked the first time and kept in `localStorage` (`/giphy key` changes or removes it); it never goes to peers, and seeing GIFs needs no key. A GIF message is `{ ...chat, text: <search>, gif: { id, width, height } }`: peers get the Giphy id and build the image URL themselves, never a URL from a peer. GIFs can't be edited, show their still frame under `prefers-reduced-motion`, and "GIF unavailable" once Giphy drops them.
 - New message notifications, Slack style: while the tab is hidden or unfocused, a message from someone else puts a dot on the favicon and plays a short ding (synthesized with Web Audio, no sound file). Coming back to the page clears the dot. History replayed when you join doesn't notify. The ding can be muted in the settings, remembered locally (`jukebox:sound`). Browsers only allow sound after a click or key press on the page.
 - Settings: ⚙️ in the top bar, next to the connection status, opens a modal to change your name (peers get it through a resent `hello`, past messages keep the old one), pick the room's theme (for everyone, see below), switch to chat mode, mute the message sound, and set or remove your Giphy key (checked before it's saved). All but the theme kept in `localStorage`.

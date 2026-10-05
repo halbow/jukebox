@@ -11,6 +11,7 @@
 import { isChat } from './chat.js'
 import { isId, isName, isTime } from './limits.js'
 import { isQueue } from './queue.js'
+import { isReaction } from './reactions.js'
 import { isState } from './sync.js'
 import { isTheme } from './theme.js'
 
@@ -20,6 +21,7 @@ const CHANNELS = {
   hello: isHello, // who you are, see `isHello`: on connect, and again on every change
   state: isState, // the room's player, see sync.js
   chat: isChat, // a message or an edit, see chat.js; also how the history gets replayed to newcomers
+  reaction: isReaction, // an emoji on a message, or taken off, see reactions.js; replayed with the history
   history: isHistoryAnswer, // whether a newcomer gets the chat history, see history.js
   queue: isQueue, // Up next, see queue.js
   theme: isTheme, // the room's theme, see theme.js

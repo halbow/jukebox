@@ -652,6 +652,113 @@ select:focus {
   color: var(--text);
 }
 
+/* ---------- reactions ---------- */
+
+/* The smiley to react shows on hover (always on touch screens), over the end of the message. */
+.chat-log li:not(.notice) {
+  position: relative;
+  padding-right: 28px;
+}
+
+.chat-log .react {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  display: flex;
+  padding: 4px;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.chat-log li:hover .react,
+.chat-log .react:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .chat-log .react {
+    opacity: 0.6;
+  }
+}
+
+.reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--field);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85em;
+  cursor: pointer;
+}
+
+.reaction span {
+  margin-left: 2px;
+  font-size: 0.9em;
+}
+
+.reaction:hover {
+  background: var(--hover);
+}
+
+/* After the pills, Slack style: the same height, round. */
+.reaction.add-reaction {
+  padding: 1px 6px;
+}
+
+.add-reaction svg {
+  display: block;
+  margin: 2px 0;
+}
+
+.reaction.add-reaction:hover {
+  color: var(--text);
+}
+
+/* Yours, like Slack's. */
+.reaction[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+}
+
+/* Only you see it, just below the message, over the room kept for the smiley. */
+.reaction-picker {
+  margin: 6px -28px 0 0;
+  padding: 10px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+}
+
+.chat .reaction-picker .hint {
+  margin: 4px 0 0;
+}
+
+.reaction-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.reaction-picker .actions {
+  margin: 4px 0 0;
+}
+
+.reaction-choice {
+  font-size: 1.25em;
+}
+
 /* ---------- /giphy ---------- */
 
 /* Fixed height, width from the aspect ratio (`width`/`height` attributes), so the log doesn't jump on load. */

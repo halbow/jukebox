@@ -3,6 +3,7 @@
 // People who were here before us, or come back after a refresh, get it without asking.
 // Answers are kept in `session.sharedWith`, so a refresh doesn't ask again.
 
+import { chatKey } from './chat.js'
 import { $, actionsRow, button, el, hint } from './dom.js'
 import { on, onPeerLeave, send } from './peers.js'
 import { people } from './people.js'
@@ -51,6 +52,8 @@ function settleHistory(from, share) {
 
 function sendHistory(peerId) {
   for (const msg of session.chat) send('chat', msg, peerId)
+  const keys = new Set(session.chat.map(chatKey))
+  for (const reaction of session.reactions) if (keys.has(reaction.key)) send('reaction', reaction, peerId)
 }
 
 function renderAsks() {
