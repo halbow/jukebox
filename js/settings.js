@@ -1,7 +1,9 @@
-// The settings modal (⚙️ in the top bar): your name, the room's theme, chat mode, the message sound, your Giphy key.
+// The settings modal (⚙️ in the top bar): your name, the room's theme, chat mode, the message sound, the debug log,
+// your Giphy key.
 // All but the theme are yours and stay in `localStorage`; the theme is the room's (see theme.js).
 
 import { addNotice } from './chat-log.js'
+import { debugOn, setDebug } from './debug.js'
 import { $, clearError, flash, showError } from './dom.js'
 import { KEY_HELP_URL, checkKey, loadKey, saveKey } from './giphy.js'
 import { MAX_NAME_LENGTH, cleanName } from './limits.js'
@@ -13,6 +15,7 @@ import { THEMES, applyTheme } from './theme.js'
 
 const NAME_KEY = 'jukebox:name'
 const LAYOUT_KEY = 'jukebox:layout' // 'chat' when the chat is in focus, the video otherwise
+const DEBUG_KEY = 'jukebox:debug' // 'on' while the debug log is
 
 $('settings-name-input').maxLength = MAX_NAME_LENGTH
 $('settings-giphy-help').href = KEY_HELP_URL
@@ -22,6 +25,7 @@ function openSettings() {
   $('settings-theme').value = session.theme.id
   $('settings-chat-mode').checked = $('view-room').classList.contains('chat-mode')
   $('settings-sound').checked = soundOn()
+  $('settings-debug').checked = debugOn()
   $('settings-giphy-input').value = loadKey()
   $('settings-giphy-remove').hidden = !loadKey()
   clearError('settings-error')
@@ -100,6 +104,16 @@ setChatMode(localStorage.getItem(LAYOUT_KEY) === 'chat')
 // ---------- sound ----------
 
 $('settings-sound').addEventListener('change', (e) => setSound(e.target.checked))
+
+// ---------- debug log ----------
+
+function setDebugLog(on) {
+  setDebug(on)
+  localStorage.setItem(DEBUG_KEY, on ? 'on' : 'off')
+}
+
+$('settings-debug').addEventListener('change', (e) => setDebugLog(e.target.checked))
+setDebug(localStorage.getItem(DEBUG_KEY) === 'on')
 
 // ---------- Giphy key ----------
 

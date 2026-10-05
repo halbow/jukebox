@@ -28,7 +28,7 @@ node --test        # or: just test. Node 22.15+, nothing to install
 8. **⏸ Pause for me** stops the music for you only; **Rejoin the room** jumps back to where the others are. They see a ⏸ next to your name meanwhile.
 9. **📞**, next to "In the room", starts a call: the others are asked to join, and the music pauses for whoever's in it. Mute, show your video, hang up to get back to the music.
 10. New messages put a dot on the tab's icon and play a ding while you're away.
-11. ⚙️ in the top bar opens the settings: your name, the room's theme (for everyone), chat mode, the message sound, your Giphy key.
+11. ⚙️ in the top bar opens the settings: your name, the room's theme (for everyone), chat mode, the message sound, the debug log, your Giphy key.
 
 ## Code
 
@@ -62,7 +62,8 @@ UI, each module wiring itself to the page and the peers on import:
 - `js/giphy-ui.js`: the private `/giphy` preview and the key prompt
 - `js/call-ui.js`: the 📞 button, the call screen (tiles, mute, camera, hang up) and the "is calling" prompt
 - `js/history.js`: asking the room before replaying the chat history to a newcomer
-- `js/settings.js`: the settings modal: name, room theme, chat mode, sound, Giphy key
+- `js/settings.js`: the settings modal: name, room theme, chat mode, sound, debug log, Giphy key
+- `js/debug.js`: the debug log, in the console: peer messages, joins and leaves, sync decisions
 - `js/notify.js`: new message notifications: favicon dot and ding, with the mute setting
 - `js/dom.js`: small DOM helpers (`el`, `button`, errors, status pill)
 - `style.css`: layout only; `themes/`: one stylesheet per theme, setting the tokens `style.css` uses (see `themes/README.md`)

@@ -3,6 +3,7 @@
 //
 // type State = { videoId, playing, position /* s, at sentAt */, sentAt /* sender Date.now() */, from }
 
+import { debug } from './debug.js'
 import { isId, isTime } from './limits.js'
 import { PLAYER_STATE, currentVideoId, isVideoId } from './youtube.js'
 
@@ -18,6 +19,9 @@ const GUARD_SEEK_MS = 1500
 const GUARD_PLAY_MS = 3000
 const GUARD_LOAD_MS = 8000
 const SETTLE_MS = 500
+
+const STATE_NAMES = Object.fromEntries(Object.entries(PLAYER_STATE).map(([name, value]) => [value, name]))
+const s1 = (seconds) => `${seconds.toFixed(1)}s`
 
 export function isState(msg) {
   return (
@@ -82,6 +86,7 @@ export class Sync {
   }
 
   receive(state) {
+    debug(`sync: room state from ${state.from}`, { ...state, expected: s1(expectedPosition(state)) })
     this.state = state
     this.#apply()
   }
@@ -89,12 +94,14 @@ export class Sync {
   /** Local "change video" from the URL bar, or cued paused (`playing: false`) for an auto-paste. */
   load(videoId, { playing = true } = {}) {
     this.state = { videoId, playing, position: 0, sentAt: Date.now(), from: this.peerId }
+    debug(`sync: telling the room ${playing ? 'play' : 'cue'} ${videoId} from the start`)
     this.onBroadcast(this.state)
     this.#apply()
   }
 
   onPlayerState(playerState) {
     if (!this.#active()) return
+    debug(`sync: player ${STATE_NAMES[playerState] ?? playerState} at ${s1(this.#player.getCurrentTime())}${this.#guarded() ? ' (ours, ignored)' : ''}`)
     this.#tick() // catch a seek before interpreting the state change
     if (this.#guarded()) {
       if (this.#reached(playerState)) this.#guardUntil = Math.min(this.#guardUntil, Date.now() + SETTLE_MS)
@@ -102,10 +109,10 @@ export class Sync {
     }
     if (!this.state) return
     if (playerState === PLAYING) {
-      if (!this.state.playing) this.#broadcastLocal()
+      if (!this.state.playing) this.#broadcastLocal('played here')
       else this.#resync() // back from buffering or an ad
     } else if (playerState === PAUSED && this.state.playing) {
-      this.#broadcastLocal()
+      this.#broadcastLocal('paused here')
     }
     // BUFFERING is deliberately ignored: one slow peer must not pause everyone.
   }
@@ -136,7 +143,10 @@ export class Sync {
     if (this.#guardUntil && !this.#guarded()) {
       this.#guardUntil = 0
       const blocked = [UNSTARTED, PAUSED, CUED].includes(playerState)
-      if (this.state?.playing && blocked) this.onNeedsGesture() // autoplay was refused
+      if (this.state?.playing && blocked) {
+        debug(`sync: autoplay refused (player ${STATE_NAMES[playerState]}), asking for a click`)
+        this.onNeedsGesture()
+      }
     }
 
     const prev = this.#sample
@@ -148,7 +158,8 @@ export class Sync {
     // A stall (ad, network) freezes the position; a seek moves it away from where it was.
     const seeked = prev && Math.abs(t - predicted) > SEEK_JUMP_S && Math.abs(t - prev.t) > TICK_MS / 1000
     const videoChanged = currentVideoId(player) && currentVideoId(player) !== this.state.videoId
-    if (seeked || videoChanged) return this.#broadcastLocal()
+    if (seeked) return this.#broadcastLocal(`seek detected: ${s1(prev.t)} → ${s1(t)}, expected ${s1(predicted)}`)
+    if (videoChanged) return this.#broadcastLocal(`video changed in the player to ${currentVideoId(player)}`)
 
     if (playerState === PLAYING && this.state.playing && Date.now() - this.#lastResync > RESYNC_COOLDOWN_MS) {
       this.#resync()
@@ -158,6 +169,7 @@ export class Sync {
   #resync() {
     const target = expectedPosition(this.state)
     if (Math.abs(this.#player.getCurrentTime() - target) <= DRIFT_S) return
+    debug(`sync: resync, drifted from ${s1(this.#player.getCurrentTime())} to ${s1(target)}`)
     this.#lastResync = Date.now()
     this.#guard(GUARD_SEEK_MS)
     this.#player.seekTo(target, true)
@@ -171,34 +183,41 @@ export class Sync {
     const target = expectedPosition(this.state)
     const playerState = player.getPlayerState()
     const drifted = Math.abs(player.getCurrentTime() - target) > DRIFT_S
+    const log = (action) => debug(`sync: ${action} (player ${STATE_NAMES[playerState]} at ${s1(player.getCurrentTime())}, room ${playing ? 'playing' : 'paused'} at ${s1(target)})`)
 
     if (currentVideoId(player) !== videoId) {
       this.#guard(GUARD_LOAD_MS)
+      log(`${playing ? 'load' : 'cue'} ${videoId}`)
       if (playing) player.loadVideoById({ videoId, startSeconds: target })
       else player.cueVideoById({ videoId, startSeconds: target })
     } else if (playing) {
       const needsPlay = playerState !== PLAYING && playerState !== BUFFERING
       if (!drifted && !needsPlay) return
       this.#guard(needsPlay ? GUARD_PLAY_MS : GUARD_SEEK_MS)
+      log([drifted && 'seek', needsPlay && 'play'].filter(Boolean).join(' + '))
       if (drifted) player.seekTo(target, true)
       if (needsPlay) player.playVideo()
     } else if (playerState === PAUSED) {
       if (!drifted) return
       this.#guard(GUARD_SEEK_MS)
+      log('seek')
       player.seekTo(target, true)
     } else if (playerState === PLAYING || playerState === BUFFERING) {
       this.#guard(GUARD_PLAY_MS)
+      log(drifted ? 'pause + seek' : 'pause')
       player.pauseVideo()
       if (drifted) player.seekTo(target, true)
     } else {
       // Cued / ended / unstarted: seekTo would start playback, so re-cue at the right spot instead.
       this.#guard(GUARD_LOAD_MS)
+      log('re-cue')
       player.cueVideoById({ videoId, startSeconds: target })
     }
     this.#sample = null
   }
 
-  #broadcastLocal() {
+  /** `reason` is for the debug log: the room follows us from here, so it's what explains a jump. */
+  #broadcastLocal(reason) {
     const player = this.#player
     this.state = {
       videoId: currentVideoId(player) || this.state.videoId,
@@ -207,6 +226,7 @@ export class Sync {
       sentAt: Date.now(),
       from: this.peerId,
     }
+    debug(`sync: telling the room ${this.state.playing ? 'playing' : 'paused'} at ${s1(this.state.position)}: ${reason}`)
     this.onBroadcast(this.state)
   }
 }

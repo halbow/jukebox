@@ -10,6 +10,7 @@
 
 import { isCall } from './call.js'
 import { isChat } from './chat.js'
+import { debug } from './debug.js'
 import { isId, isName, isTime } from './limits.js'
 import { isQueue } from './queue.js'
 import { isReaction } from './reactions.js'
@@ -68,7 +69,9 @@ export function onPeerLeave(handler) {
 
 /** Sends to everyone, or only to `peerId`. */
 export function send(type, msg, peerId) {
-  actions?.[type].send(msg, peerId && { target: peerId })
+  if (!actions) return
+  debug(`▲ ${type} to ${peerId ?? 'everyone'}`, msg)
+  actions[type].send(msg, peerId && { target: peerId })
 }
 
 // ---------- media, for the call ----------
@@ -85,19 +88,23 @@ export function onPeerTrack(handler) {
 }
 
 export function addStream(stream, peerId) {
+  debug(`▲ stream to ${peerId}`, stream)
   room?.addStream(stream, { target: peerId })
 }
 
 export function removeStream(stream, peerId) {
+  debug(`▲ stream removed for ${peerId}`)
   room?.removeStream(stream, { target: peerId })
 }
 
 /** Adds `track` to `stream`, already sent to `peerId`. */
 export function addTrack(track, stream, peerId) {
+  debug(`▲ track to ${peerId}`, track)
   room?.addTrack(track, stream, { target: peerId })
 }
 
 export function removeTrack(track, peerId) {
+  debug(`▲ track removed for ${peerId}`, track)
   room?.removeTrack(track, { target: peerId })
 }
 
@@ -111,6 +118,7 @@ export async function connect(passphrase, { onUnreachable }) {
   room = joinRoom({ appId: APP_ID, password: passphrase }, passphrase, {
     onJoinError: ({ error, peerId }) => {
       console.warn('jukebox: join error', error)
+      debug(`✖ join error with ${peerId}`, error)
       // Trystero keeps retrying: a failed attempt doesn't matter if another one got through.
       if (!(peerId in room.getPeers())) onUnreachable(peerId)
     },
@@ -118,16 +126,34 @@ export async function connect(passphrase, { onUnreachable }) {
   actions = {}
   for (const [type, isValid] of Object.entries(CHANNELS)) {
     actions[type] = room.makeAction(type)
-    actions[type].onMessage = (msg, { peerId }) => isValid(msg) && handlers[type]?.(msg, peerId)
+    actions[type].onMessage = (msg, { peerId }) => {
+      const valid = isValid(msg)
+      debug(`▼ ${type} from ${peerId}${valid ? '' : ' (malformed, dropped)'}`, msg)
+      if (valid) handlers[type]?.(msg, peerId)
+    }
   }
   connectedAt = Date.now()
-  room.onPeerJoin = (peerId) => joinHandlers.forEach((handler) => handler(peerId))
-  room.onPeerLeave = (peerId) => leaveHandlers.forEach((handler) => handler(peerId))
-  room.onPeerStream = (stream, peerId) => streamHandler?.(stream, peerId)
-  room.onPeerTrack = (track, stream, peerId) => trackHandler?.(track, stream, peerId)
+  debug('joined the room')
+  room.onPeerJoin = (peerId) => {
+    debug(`● ${peerId} connected`)
+    joinHandlers.forEach((handler) => handler(peerId))
+  }
+  room.onPeerLeave = (peerId) => {
+    debug(`○ ${peerId} left`)
+    leaveHandlers.forEach((handler) => handler(peerId))
+  }
+  room.onPeerStream = (stream, peerId) => {
+    debug(`▼ stream from ${peerId}`, stream)
+    streamHandler?.(stream, peerId)
+  }
+  room.onPeerTrack = (track, stream, peerId) => {
+    debug(`▼ track from ${peerId}`, track)
+    trackHandler?.(track, stream, peerId)
+  }
 }
 
 export function leave() {
+  if (room) debug('left the room')
   room?.leave()
   room = actions = null
 }
