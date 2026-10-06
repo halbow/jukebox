@@ -36,6 +36,10 @@ export function currentVideoId(player) {
   return player.getVideoData?.()?.video_id || null
 }
 
+export function getVideoDuration(player) {
+  return player.getDuration?.() ?? null
+}
+
 /** Accepts a raw id or any common YouTube URL shape (watch, youtu.be, shorts, embed, live). */
 export function parseVideoId(input) {
   const text = input.trim()

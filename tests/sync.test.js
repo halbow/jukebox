@@ -32,6 +32,7 @@ class FakePlayer {
   #videoId = null
   #position = 0
   #at = Date.now()
+  #duration = null
 
   getPlayerState() {
     return this.#state
@@ -43,6 +44,14 @@ class FakePlayer {
 
   getVideoData() {
     return { video_id: this.#videoId }
+  }
+
+  getDuration() {
+    return this.#duration ?? 1000 // default to 1000s if not set
+  }
+
+  setDuration(duration) {
+    this.#duration = duration
   }
 
   loadVideoById({ videoId, startSeconds }) {
@@ -286,4 +295,43 @@ test('Sync: autoplay refused asks for a gesture, once the load had its time', ()
   mock.timers.tick(1000)
   assert.equal(needsGesture, 1)
   assert.deepEqual(broadcasts, [])
+})
+
+test('Sync: ignores stale state older than 2 minutes', () => {
+  sync.attach(player)
+  sync.start()
+  const staleState = { ...state, sentAt: NOW - 130_000 } // 130s old, older than 120s threshold
+  sync.receive(staleState)
+  assert.deepEqual(player.calls, [])
+  assert.equal(sync.state, null)
+})
+
+test('Sync: accepts state within 2 minutes', () => {
+  sync.attach(player)
+  sync.start()
+  const freshState = { ...state, sentAt: NOW - 100_000 } // 100s old, within threshold
+  sync.receive(freshState)
+  assert.deepEqual(player.calls, ['loadVideoById'])
+  assert.equal(sync.state, freshState)
+})
+
+test('Sync: clamps target position to video duration on resync', () => {
+  player.setDuration(100) // video is only 100s long
+  sync.attach(player)
+  sync.start()
+  // Start with a fresh state at position 0
+  const initialState = { ...state, position: 0, sentAt: NOW }
+  sync.receive(initialState)
+  mock.timers.tick(10_000)
+  player.calls.length = 0
+  // Now receive a state that would calculate to a position beyond the video duration
+  // position: 50, sentAt: 100s ago, so expectedPosition = 50 + 100 = 150, but duration is 100
+  const oldState = { ...initialState, position: 50, sentAt: NOW - 100_000 }
+  sync.receive(oldState)
+  mock.timers.tick(10_000)
+  // Should have sought to 100 (clamped from 150)
+  // The position should be clamped to the video duration
+  assert.equal(player.getCurrentTime(), 100)
+  // Should have at least one seekTo call
+  assert.ok(player.calls.includes('seekTo'))
 })
