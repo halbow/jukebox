@@ -44,8 +44,17 @@ $('chat-form').addEventListener('submit', (e) => {
 input.addEventListener('keydown', (e) => {
   if (e.isComposing || suggestions.keydown(e)) return // while the list shows, it has the arrows, Enter and Escape
   if (e.key === 'Enter') {
-    e.preventDefault()
-    $('chat-form').requestSubmit()
+    if (e.shiftKey) {
+      // Shift + Enter: insert a line break
+      e.preventDefault()
+      const start = input.selectionStart
+      const end = input.selectionEnd
+      input.setRangeText('\n', start, end, 'end')
+    } else {
+      // Enter alone: send the message
+      e.preventDefault()
+      $('chat-form').requestSubmit()
+    }
   } else if (e.key === 'ArrowUp' && !input.value) {
     e.preventDefault()
     startEditing()
@@ -58,7 +67,6 @@ input.addEventListener('keydown', (e) => {
 })
 
 input.addEventListener('input', () => {
-  if (/[\r\n]/.test(input.value)) flattenLines() // pasted lines
   const done = completedShortcodeAt(input.value, input.selectionStart)
   if (done) input.setRangeText(done.emoji, done.start, done.end, 'end')
   fitChatInput()
@@ -76,7 +84,7 @@ function clearInput() {
   suggestions.close()
 }
 
-// A one-line message in a box that grows with it, so you see all of it while typing: Enter sends, no newlines.
+// A message in a box that grows with it, so you see all of it while typing: Enter sends, Shift+Enter for newline.
 // The form keeps its height while the box is measured: otherwise the chat log grows for that moment, which
 // clamps its scroll, and Firefox reports that as you scrolling up off the bottom (see chat-log.js).
 function fitChatInput() {
