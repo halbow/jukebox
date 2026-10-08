@@ -6,12 +6,13 @@
 //
 // The room shares three values, the player's state, the queue and the theme: every change sends all of it,
 // stamped `{ sentAt, from }`, and every peer keeps the newest (see `shareNewest` in peers.js). The rest are
-// events: hello, chat, reaction, history.
+// events: hello, chat, reaction, chessJoin, history.
 //
 // type Hello = { name, joinedAt, pausedLocally, call /* null, or { muted, camera } in the call */, from }
 // type State = { videoId, playing, position /* s, at sentAt */, sentAt /* sender Date.now() */, from }
-// type Chat = { type: 'chat', text, name, sentAt, from, editedAt?, gif? }
+// type Chat = { type: 'chat', text, name, sentAt, from, editedAt?, gif?, chess? }
 // type Reaction = { key /* chatKey of the message */, emoji, on, name, sentAt, from }
+// type ChessJoin = { key /* chatKey of the /chess message */, name, sentAt, from }
 // type HistoryAnswer = { from /* the newcomer's session peer id */, share }
 // type Queue = { items: [{ id, videoId, addedBy /* name */, from /* peer id */ }], sentAt, from }
 // type Theme = { id, by /* name, for the chat line */, sentAt, from }
@@ -19,6 +20,7 @@
 // `from` is always the sender's session peer id, which survives a refresh; handlers also get the sender's
 // Trystero `peerId`, which doesn't.
 
+import { isChess } from './chess.js'
 import { isGif } from './giphy.js'
 import { MAX_CHAT_LENGTH, MAX_QUEUE, isId, isName, isTime, randomId } from './limits.js'
 import * as peers from './peers.js'
@@ -62,9 +64,10 @@ export const shareState = (sharing) => peers.shareNewest('state', sharing)
 
 // ---------- chat: a message or an edit, see chat.js; also how the history gets replayed to newcomers ----------
 
-/** A `/giphy` message carries a `gif` (see giphy.js) and its search as `text`, shown as the caption. */
-export function createChat(text, { name, from, gif }) {
-  return { type: 'chat', text, name, sentAt: Date.now(), from, ...(gif && { gif }) }
+/** A `/giphy` message carries a `gif` (see giphy.js) and its search as `text`, shown as the caption.
+ *  A `/chess` one carries a `chess` (see chess.js) and a fallback `text` for peers that don't know it. */
+export function createChat(text, { name, from, gif, chess }) {
+  return { type: 'chat', text, name, sentAt: Date.now(), from, ...(gif && { gif }), ...(chess && { chess }) }
 }
 
 /** The whole message again, same `from` and `sentAt` (so the same `chatKey`), and a later `editedAt`. */
@@ -82,7 +85,8 @@ export function isChat(msg) {
     isTime(msg.sentAt) &&
     isId(msg.from) &&
     (msg.editedAt === undefined || isTime(msg.editedAt)) &&
-    (msg.gif === undefined || isGif(msg.gif))
+    (msg.gif === undefined || isGif(msg.gif)) &&
+    (msg.chess === undefined || isChess(msg.chess))
   )
 }
 
@@ -110,6 +114,19 @@ export function isReaction(msg) {
 
 export const sendReaction = (reaction, peerId) => peers.send('reaction', reaction, peerId)
 export const onReaction = (handler) => peers.on('reaction', handler)
+
+// ---------- chessJoin: someone clicked Join on a /chess game, see chess.js; replayed with the history ----------
+
+export function createChessJoin(key, { name, from }) {
+  return { key, name, sentAt: Date.now(), from }
+}
+
+export function isChessJoin(msg) {
+  return typeof msg?.key === 'string' && msg.key.length > 0 && msg.key.length <= MAX_KEY_LENGTH && isName(msg.name) && isTime(msg.sentAt) && isId(msg.from)
+}
+
+export const sendChessJoin = (join, peerId) => peers.send('chessJoin', join, peerId)
+export const onChessJoin = (handler) => peers.on('chessJoin', handler)
 
 // ---------- history: the first answer to "share the chat history with <from>?", settling it for everyone ----------
 
@@ -165,6 +182,7 @@ export const CHANNELS = {
   state: isState,
   chat: isChat,
   reaction: isReaction,
+  chessJoin: isChessJoin,
   history: isHistoryAnswer,
   queue: isQueue,
   theme: isTheme,

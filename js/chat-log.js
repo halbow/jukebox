@@ -4,10 +4,12 @@
 
 import { chatKey, isNewerEdit, senderColor } from './chat.js'
 import { $, el } from './dom.js'
+import { addChessJoin, playersOf } from './chess.js'
+import { chessCard } from './chess-ui.js'
 import { gifStillUrl, gifUrl } from './giphy.js'
 import { HISTORY_SIZE } from './limits.js'
 import { isAway, notify } from './notify.js'
-import { createReaction, onChat, onReaction, sendChat, sendReaction } from './protocol.js'
+import { createChessJoin, createReaction, onChat, onChessJoin, onReaction, sendChat, sendChessJoin, sendReaction } from './protocol.js'
 import { reactionPickerFor, toggleReactionPicker } from './reaction-picker.js'
 import { addReaction, findReaction, reactionsOn } from './reactions.js'
 import { save, session } from './session.js'
@@ -16,6 +18,7 @@ let notices = [] // never replayed nor saved: [{ notice: true, text, sentAt }]
 
 onChat(receiveChat)
 onReaction(receiveReaction)
+onChessJoin(receiveChessJoin)
 
 // Read to the end unless you scrolled up, and kept there when the log shrinks (the input growing, the window resizing).
 let atBottom = true
@@ -54,6 +57,7 @@ function receiveChat(msg) {
     const dropped = new Set(session.chat.slice(0, -HISTORY_SIZE).map(chatKey))
     session.chat = session.chat.slice(-HISTORY_SIZE)
     session.reactions = session.reactions.filter((r) => !dropped.has(r.key))
+    session.chessJoins = session.chessJoins.filter((j) => !dropped.has(j.key))
   }
   renderChat()
   save()
@@ -78,6 +82,22 @@ function receiveReaction(reaction) {
   save()
 }
 
+/** You clicked Join on the game posted as message `key`: tells everyone, so they see who's playing. */
+function joinChess(key) {
+  const join = createChessJoin(key, { name: session.name, from: session.peerId })
+  receiveChessJoin(join)
+  sendChessJoin(join)
+}
+
+// Like reactions, kept even before its message arrives.
+function receiveChessJoin(join) {
+  const joins = addChessJoin(session.chessJoins, join)
+  if (!joins) return
+  session.chessJoins = joins
+  renderChat({ follow: false })
+  save()
+}
+
 /** `follow: false` keeps the log where you scrolled it, for changes to older messages. */
 export function renderChat({ follow = true } = {}) {
   const list = $('chat-log')
@@ -97,6 +117,7 @@ function noticeItem({ text, sentAt }) {
 }
 
 function messageItem(msg) {
+  const key = chatKey(msg)
   const mine = msg.from === session.peerId
   const li = el('li', { className: mine ? 'mine' : '' })
   const sender = el('b', { textContent: mine ? 'You' : msg.name || 'Friend' })
@@ -104,11 +125,16 @@ function messageItem(msg) {
   if (msg.gif) {
     // the search reads as the command it was, not as something said
     li.append(sender, el('small', { className: 'gif-query', textContent: `/giphy ${msg.text}` }), gifElement(msg.gif, msg.text))
+  } else if (msg.chess) {
+    li.append(
+      sender,
+      el('small', { className: 'gif-query', textContent: '/chess' }),
+      chessCard(msg.chess, playersOf(session.chessJoins, key), session.peerId, () => joinChess(key)),
+    )
   } else {
     li.append(sender, msg.text)
   }
   if (msg.editedAt) li.append(el('small', { textContent: '(edited)' }))
-  const key = chatKey(msg)
   const openPicker = () => {
     toggleReactionPicker(msg, (emoji) => toggleReaction(key, emoji))
     renderChat({ follow: false })

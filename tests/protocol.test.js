@@ -4,6 +4,7 @@ import { chatKey, isNewerEdit } from '../js/chat.js'
 import { MAX_CHAT_LENGTH, MAX_QUEUE } from '../js/limits.js'
 import {
   createChat,
+  createChessJoin,
   createHello,
   createHistoryAnswer,
   createQueue,
@@ -14,6 +15,7 @@ import {
   editChat,
   isCall,
   isChat,
+  isChessJoin,
   isHello,
   isHistoryAnswer,
   isQueue,
@@ -79,11 +81,13 @@ test('createHistoryAnswer: a valid answer, yes or no', () => {
 
 const msg = { type: 'chat', text: 'hi', name: 'Ada', sentAt: 1000, from: 'peer1' }
 const gif = { id: 'abc123', width: 200, height: 150 }
+const chess = { id: 'jW85jtQ1' }
 
 test('isChat: accepts well-formed messages', () => {
   assert.equal(isChat(msg), true)
   assert.equal(isChat({ ...msg, editedAt: 2000 }), true)
   assert.equal(isChat({ ...msg, gif }), true)
+  assert.equal(isChat({ ...msg, chess }), true)
   assert.equal(isChat({ ...msg, text: 'x'.repeat(MAX_CHAT_LENGTH) }), true)
 })
 
@@ -98,16 +102,19 @@ test('isChat: drops malformed ones', () => {
     { ...msg, from: '' },
     { ...msg, editedAt: 'later' },
     { ...msg, gif: { id: 'https://evil.example/x.gif', width: 1, height: 1 } },
+    { ...msg, chess: { id: 'https://evil.example/' } },
   ]) {
     assert.equal(isChat(bad), false, JSON.stringify(bad))
   }
 })
 
-test('createChat: a valid message, gif only when given', () => {
+test('createChat: a valid message, gif and chess only when given', () => {
   const created = createChat('hello', { name: 'Ada', from: 'peer1' })
   assert.equal(isChat(created), true)
   assert.equal('gif' in created, false)
+  assert.equal('chess' in created, false)
   assert.deepEqual(createChat('cats', { name: 'Ada', from: 'peer1', gif }).gif, gif)
+  assert.deepEqual(createChat('chess', { name: 'Ada', from: 'peer1', chess }).chess, chess)
 })
 
 test('editChat: same key, newer edit', () => {
@@ -211,4 +218,15 @@ test('createTheme: a valid theme, with who picked it', () => {
   const created = createTheme('tavern', { name: 'Ada', from: 'peer1' })
   assert.equal(isTheme(created), true)
   assert.equal(created.by, 'Ada')
+})
+
+// ---------- chessJoin ----------
+
+test('isChessJoin: a message key, a name, a time and a sender', () => {
+  const join = { key: 'peer1:1000', name: 'Ada', sentAt: 2000, from: 'peer2' }
+  assert.equal(isChessJoin(join), true)
+  assert.equal(isChessJoin(createChessJoin('peer1:1000', { name: 'Ada', from: 'peer2' })), true)
+  for (const bad of [null, { ...join, key: '' }, { ...join, key: 'x'.repeat(49) }, { ...join, name: 42 }, { ...join, sentAt: 'now' }, { ...join, from: '' }]) {
+    assert.equal(isChessJoin(bad), false, JSON.stringify(bad))
+  }
 })

@@ -7,7 +7,7 @@ import { chatKey } from './chat.js'
 import { $, actionsRow, button, el, hint } from './dom.js'
 import { onPeerLeave } from './peers.js'
 import { people } from './people.js'
-import { createHistoryAnswer, onHistoryAnswer, sendChat, sendHistoryAnswer, sendReaction } from './protocol.js'
+import { createHistoryAnswer, onHistoryAnswer, sendChat, sendChessJoin, sendHistoryAnswer, sendReaction } from './protocol.js'
 import { save, session } from './session.js'
 
 let asks = [] // newcomers waiting for someone here to answer: [{ peerId, from, name }]
@@ -55,6 +55,7 @@ function sendHistory(peerId) {
   for (const msg of session.chat) sendChat(msg, peerId)
   const keys = new Set(session.chat.map(chatKey))
   for (const reaction of session.reactions) if (keys.has(reaction.key)) sendReaction(reaction, peerId)
+  for (const join of session.chessJoins) if (keys.has(join.key)) sendChessJoin(join, peerId)
 }
 
 function renderAsks() {

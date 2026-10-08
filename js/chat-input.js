@@ -1,7 +1,8 @@
-// The chat input: sending, editing your last message (↑), `:emoji:` and `/giphy` commands.
+// The chat input: sending, editing your last message (↑), `:emoji:`, `/giphy` and `/chess` commands.
 
 import { createChat, editChat } from './protocol.js'
-import { postChat } from './chat-log.js'
+import { addNotice, postChat } from './chat-log.js'
+import { chessText, completesChessCommand, createGame, isChessCommand } from './chess.js'
 import { $ } from './dom.js'
 import { completedShortcodeAt, replaceShortcodes, shortcodeAt, suggest } from './emoji.js'
 import { completesCommand, parseGiphyCommand } from './giphy.js'
@@ -23,6 +24,7 @@ const suggestions = suggestionList(input, $('emoji-suggestions'), {
 })
 
 const GIPHY_SUGGESTION = { icon: '🎞️', label: '/giphy', detail: '[search] · send a GIF', insert: '/giphy ' }
+const CHESS_SUGGESTION = { icon: '♟️', label: '/chess', detail: 'start a Lichess game for the room', insert: '/chess' }
 
 $('chat-form').addEventListener('submit', (e) => {
   e.preventDefault()
@@ -31,6 +33,11 @@ $('chat-form').addEventListener('submit', (e) => {
     clearInput()
     renderCommandHint()
     return runGiphyCommand(command)
+  }
+  if (!editing && isChessCommand(input.value)) {
+    clearInput()
+    renderCommandHint()
+    return startChess()
   }
   const text = replaceShortcodes(input.value.trim()).slice(0, MAX_CHAT_LENGTH)
   if (!text && !editing) return
@@ -102,8 +109,17 @@ function flattenLines() {
   input.setSelectionRange(before.length, before.length)
 }
 
+async function startChess() {
+  try {
+    const chess = await createGame()
+    postChat(createChat(chessText(chess.id), { name: session.name, from: session.peerId, chess }))
+  } catch (err) {
+    addNotice(err.message)
+  }
+}
+
 function startEditing() {
-  editing = session.chat.findLast((m) => m.from === session.peerId && !m.gif) // a GIF can't be edited
+  editing = session.chat.findLast((m) => m.from === session.peerId && !m.gif && !m.chess) // a GIF or a game can't be edited
   if (!editing) return
   input.value = editing.text
   fitChatInput()
@@ -120,19 +136,24 @@ function stopEditing() {
   $('chat-editing').hidden = true
 }
 
-/** What the list above the input offers: `/giphy` while a command starts, emoji while a `:shortcode` is typed. */
+/** What the list above the input offers: the commands while one starts, emoji while a `:shortcode` is typed. */
 function suggestionsAt() {
-  if (!editing && completesCommand(input.value)) return { start: 0, found: [GIPHY_SUGGESTION] }
+  const commands = editing
+    ? []
+    : [completesCommand(input.value) && GIPHY_SUGGESTION, completesChessCommand(input.value) && CHESS_SUGGESTION].filter(Boolean)
+  if (commands.length) return { start: 0, found: commands }
   const typing = shortcodeAt(input.value, input.selectionStart)
   const matches = typing ? suggest(typing.query) : []
   return { start: typing?.start, found: matches.map(({ name, emoji }) => ({ icon: emoji, label: `:${name}:`, insert: emoji + ' ' })) }
 }
 
-// While a `/giphy …` is typed, say it's a command and what Enter will do.
+// While a `/giphy …` or `/chess` is typed, say it's a command and what Enter will do.
 function renderCommandHint() {
   const command = !editing && parseGiphyCommand(input.value)
-  $('chat-form').classList.toggle('command', !!command)
-  $('chat-command').hidden = !command
+  const chess = !editing && isChessCommand(input.value)
+  $('chat-form').classList.toggle('command', !!command || chess)
+  $('chat-command').hidden = !command && !chess
+  if (chess) $('chat-command').textContent = '/chess · Enter to start a Lichess game, the first two to join play'
   if (!command) return
   $('chat-command').textContent = command.key
     ? '/giphy · Enter to change your Giphy key'

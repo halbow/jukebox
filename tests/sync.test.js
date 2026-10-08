@@ -262,6 +262,17 @@ test('Sync: load paused cues it', () => {
   assert.deepEqual(player.calls, ['cueVideoById'])
 })
 
+test('Sync: a peer advancing to the same next video a bit later does not restart it', () => {
+  inRoom()
+  sync.load(OTHER_ID) // our video ended, we advanced the queue
+  mock.timers.tick(5000)
+  player.calls.length = 0
+  // The peer saw the end ~5s after us, before hearing from us, and advanced to the same video.
+  sync.receive({ videoId: OTHER_ID, playing: true, position: 0, sentAt: Date.now() - 200, from: 'peer1' })
+  assert.deepEqual(player.calls, [])
+  assert.ok(Math.abs(player.getCurrentTime() - 5) < 0.01)
+})
+
 test('Sync: Pause for me stops the player and ignores the room, without telling it', () => {
   inRoom()
   sync.pauseLocally()
