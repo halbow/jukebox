@@ -46,8 +46,9 @@ class FakePlayer {
     return { video_id: this.#videoId }
   }
 
+  /** Like YouTube's: 0 until a video is loaded. */
   getDuration() {
-    return this.#duration ?? 1000 // default to 1000s if not set
+    return this.#videoId ? (this.#duration ?? 1000) : 0
   }
 
   setDuration(duration) {
@@ -308,22 +309,14 @@ test('Sync: autoplay refused asks for a gesture, once the load had its time', ()
   assert.deepEqual(broadcasts, [])
 })
 
-test('Sync: ignores stale state older than 2 minutes', () => {
+test('Sync: a newcomer joins mid-song, however long ago the room state was sent', () => {
   sync.attach(player)
   sync.start()
-  const staleState = { ...state, sentAt: NOW - 130_000 } // 130s old, older than 120s threshold
-  sync.receive(staleState)
-  assert.deepEqual(player.calls, [])
-  assert.equal(sync.state, null)
-})
-
-test('Sync: accepts state within 2 minutes', () => {
-  sync.attach(player)
-  sync.start()
-  const freshState = { ...state, sentAt: NOW - 100_000 } // 100s old, within threshold
-  sync.receive(freshState)
+  // Nobody touched the player for 3 minutes: that state is still the room's
+  sync.receive({ ...state, sentAt: NOW - 180_000 })
   assert.deepEqual(player.calls, ['loadVideoById'])
-  assert.equal(sync.state, freshState)
+  // Loaded at the live position, not clamped by the empty player's duration of 0
+  assert.equal(player.getCurrentTime(), 190)
 })
 
 test('Sync: clamps target position to video duration on resync', () => {

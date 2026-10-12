@@ -13,7 +13,6 @@ const DRIFT_S = 1 // only seek when further than this from the expected position
 const SEEK_JUMP_S = 1.5 // an unexplained jump between two samples means the user seeked
 const TICK_MS = 500
 const RESYNC_COOLDOWN_MS = 5000
-const STALE_STATE_MAX_AGE_MS = 120000 // 2 minutes - ignore state older than this
 // Echo guard windows: how long player changes we caused ourselves are not re-broadcast.
 // They end early (after SETTLE_MS) once the player reaches the target state.
 const GUARD_SEEK_MS = 1500
@@ -77,11 +76,6 @@ export class Sync {
   }
 
   receive(state) {
-    const ageMs = Date.now() - state.sentAt
-    if (ageMs > STALE_STATE_MAX_AGE_MS) {
-      debug(`sync: ignoring stale state from ${state.from} (age: ${(ageMs / 1000).toFixed(1)}s)`)
-      return
-    }
     debug(`sync: room state from ${state.from}`, { ...state, expected: s1(expectedPosition(state)) })
     this.state = state
     this.#apply()
@@ -162,17 +156,20 @@ export class Sync {
     }
   }
 
+  /**
+   * Where the player should be. Past the end of the video (the room's song is over), it's the end: seeking
+   * further makes YouTube start over, and the room with it. Only the room's own video, once loaded, has a
+   * duration to go by: before that `getDuration()` is 0, or the previous video's.
+   */
+  #target() {
+    const target = Math.max(0, expectedPosition(this.state))
+    const duration = currentVideoId(this.#player) === this.state.videoId ? getVideoDuration(this.#player) : 0
+    return duration > 0 ? Math.min(target, duration) : target
+  }
+
   #resync() {
-    let target = expectedPosition(this.state)
+    const target = this.#target()
     if (Math.abs(this.#player.getCurrentTime() - target) <= DRIFT_S) return
-    
-    // Clamp target to video duration to avoid YouTube resetting to 0
-    const duration = getVideoDuration(this.#player)
-    if (duration !== null && target > duration) {
-      debug(`sync: resync target ${s1(target)} exceeds video duration ${s1(duration)}, clamping`)
-      target = duration
-    }
-    
     debug(`sync: resync, drifted from ${s1(this.#player.getCurrentTime())} to ${s1(target)}`)
     this.#lastResync = Date.now()
     this.#guard(GUARD_SEEK_MS)
@@ -184,16 +181,8 @@ export class Sync {
     if (!this.#active() || !this.state) return
     const player = this.#player
     const { videoId, playing } = this.state
-    let target = expectedPosition(this.state)
+    const target = this.#target()
     const playerState = player.getPlayerState()
-    
-    // Clamp target to video duration to avoid YouTube resetting to 0
-    const duration = getVideoDuration(player)
-    if (duration !== null && target > duration) {
-      target = duration
-    }
-    if (target < 0) target = 0
-    
     const drifted = Math.abs(player.getCurrentTime() - target) > DRIFT_S
     const log = (action) => debug(`sync: ${action} (player ${STATE_NAMES[playerState]} at ${s1(player.getCurrentTime())}, room ${playing ? 'playing' : 'paused'} at ${s1(target)})`)
 
